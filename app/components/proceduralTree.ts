@@ -1,6 +1,7 @@
 import type p5 from "p5";
 import { CANVAS_H, CANVAS_W, GRID, TreeParams } from "./Util/types";
 import { act } from "react";
+import { drawCircleCross } from "./Util/drawings";
 
 const rows = CANVAS_H / GRID;
 const cols = CANVAS_W / GRID;
@@ -38,9 +39,12 @@ function branch(
   currentDepth: number,
   reversed: number
 ) {
-  if (currentDepth >= maxDepth || len < 2) return;
+  if (currentDepth >= maxDepth || len < 2) {
+    drawCircleCross(p, x, y);
+    return;
+  }
 
-  //그려진 이미지면 반대방향으로 시도해보고 반대방향도 안되면 루프 끝 
+  //그려진 이미지면 반대방향으로 시도해보고 반대방향도 안되면 루프 끝
   const r = Math.floor(y / GRID);
   const c = Math.floor(x / GRID);
 
@@ -48,26 +52,31 @@ function branch(
 
   const localT = Math.min(1, depthProgress - currentDepth);
   const actualLen = len * localT;
-
   if (occupied[r]?.[c]) {
     if (reversed > 0) {
       branch(p, x, y, angle + Math.PI, len, maxDepth, params, occupied, treeOccupied, t, currentDepth, reversed - 1);
     }
     else {
       const nextX = x + Math.cos(angle + Math.PI) * actualLen;
-      const nextY = y + Math.sin(angle + Math.PI) * actualLen;  // nextX → nextY
+      const nextY = y + Math.sin(angle + Math.PI) * actualLen;
 
+      //여기 잘 되고 있는지 모르겠음??
       drawLine(p, params, x, y, nextX, nextY);
       branch(p, nextX, nextY, angle + Math.PI, len, maxDepth, params, occupied, treeOccupied, t, currentDepth + 1, 0);
     }
     return;
   }
 
+
   //현재 깊이
-  if (localT <= 0) return;
+  if (localT <= 0) {
+    drawCircleCross(p, x, y);
+    return;
+  }
+
+
 
   //현재 길이
-
   const x2 = x + Math.cos(angle) * actualLen;
   const y2 = y + Math.sin(angle) * actualLen;
 

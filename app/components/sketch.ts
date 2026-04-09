@@ -1,6 +1,7 @@
 // 유니티 MonoBehaviour 역할 — setup(), draw(), 이벤트
 import type p5 from "p5";
-import { getImg, MakeimgEdge, drawAllOccupied, drawOutline } from "./Util/image";
+import { getImg, MakeimgEdge, drawAllOccupied } from "./Util/image";
+import { drawOutline } from "./Util/drawings";
 import { drawTree } from "./proceduralTree";
 import { GRID, DISPLAY_SIZE, CANVAS_W, CANVAS_H, ImgSet, rows, cols } from "./Util/types";
 import { DEFAULT_TREE } from "./Util/treeTypes";
@@ -52,7 +53,12 @@ export function createSketch(container: HTMLElement) {
     };
 
     function draw() {
-      p.background(240);
+      p.background(0);
+      p.fill(255);
+      p.stroke(0);
+      p.strokeWeight(2);
+      p.rect(0, 0, CANVAS_W, CANVAS_H);
+
       drawOutline(p, set, occupied);
 
       // 매 프레임 초기화

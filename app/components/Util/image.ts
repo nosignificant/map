@@ -46,28 +46,3 @@ export function drawAllOccupied(set: ImgSet[]): boolean[][] {
   return out;
 }
 
-export function drawOutline(p: p5, set: ImgSet[], occupied: boolean[][]) {
-  p.fill(0);
-  p.noStroke();
-
-  for (const img of set) {
-    const offsetMap = img.edgeResult.offsetMap;
-
-    for (const pl of img.placements) {
-      for (let ri = 0; ri < offsetMap.length; ri++) {
-        for (let ci = 0; ci < offsetMap[0].length; ci++) {
-          if (!offsetMap[ri][ci]) continue;  // 테두리 셀만
-
-          const cellX = pl.x + (ci - 1) * GRID;
-          const cellY = pl.y + (ri - 1) * GRID;
-
-          const outRow = Math.floor(cellY / GRID);
-          const outCol = Math.floor(cellX / GRID);
-          if (occupied[outRow]?.[outCol]) continue;
-
-          p.rect(cellX, cellY, GRID, GRID);
-        }
-      }
-    }
-  }
-}
