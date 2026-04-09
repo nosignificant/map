@@ -22,9 +22,11 @@ export function createSketch(container: HTMLElement) {
 
     //지금까지 저장된 모든 이미지 
     let occupied: boolean[][] = [];
+
+    // 나무 그린 영역
     const treeOccupied: boolean[][] = Array.from(
       { length: CANVAS_H / GRID }, () => new Array(CANVAS_W / GRID).fill(false)
-    );  // 나무 그린 영역
+    );
 
     fetch("/api/images")
       .then((res) => res.json())
