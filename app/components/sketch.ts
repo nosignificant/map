@@ -1,8 +1,8 @@
 // 유니티 MonoBehaviour 역할 — setup(), draw(), 이벤트
 import type p5 from "p5";
-import { getImg, MakeimgEdge, drawAllOccupied, drawOutline } from "./image";
+import { getImg, MakeimgEdge, drawAllOccupied, drawOutline } from "./Util/image";
 import { drawTree, type TreeParams } from "./proceduralTree";
-import { GRID, DISPLAY_SIZE, CANVAS_W, CANVAS_H, ImgSet, rows, cols } from "./types";
+import { GRID, DISPLAY_SIZE, CANVAS_W, CANVAS_H, ImgSet, rows, cols } from "./Util/types";
 
 const DEFAULT_TREE: TreeParams = {
   len: 60,

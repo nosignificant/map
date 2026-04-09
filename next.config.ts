@@ -1,8 +1,6 @@
 import type { NextConfig } from "next";
 
-const nextConfig = {
-  output: 'export',
-  basePath: '/map',
+const nextConfig: NextConfig = {
 }
 
 export default nextConfig;
