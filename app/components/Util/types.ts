@@ -35,3 +35,11 @@ export type Corner = {
   ci: number;   // 열 인덱스
   angle: number; // 대각선 방향 (라디안)
 };
+
+export type TreeParams = {
+  len: number;
+  depth: number;
+  strokeW: number;
+  color: [number, number, number];
+  spread: number;
+};

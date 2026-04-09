@@ -1,14 +1,6 @@
 import type p5 from "p5";
-import { CANVAS_H, CANVAS_W, GRID } from "./Util/types";
+import { CANVAS_H, CANVAS_W, GRID, TreeParams } from "./Util/types";
 import { act } from "react";
-
-export type TreeParams = {
-  len: number;
-  depth: number;
-  strokeW: number;
-  color: [number, number, number];
-  spread: number;
-};
 
 const rows = CANVAS_H / GRID;
 const cols = CANVAS_W / GRID;
@@ -83,13 +75,13 @@ function branch(
   //앞으로 각도 결정 
 
   const steps = Math.ceil(actualLen / GRID);
-  isTreeOccupied(steps, actualLen, x, y, x2, y2, treeOccupied);
+  if (isTreeOccupied(steps, actualLen, x, y, x2, y2, treeOccupied)) return;
   drawLine(p, params, x, y, x2, y2);
   setTreeOccupied(steps, actualLen, x, y, x2, y2, treeOccupied);
 
   if (localT >= 1) {
     branch(p, x2, y2, angle - params.spread, len * 0.7, maxDepth, params, occupied, treeOccupied, t, currentDepth + 1, reversed);
-    //branch(p, x2, y2, angle + params.spread, len * 0.7, maxDepth, params, occupied, treeOccupied, t, currentDepth + 1);
+    branch(p, x2, y2, angle + params.spread, len * 0.7, maxDepth, params, occupied, treeOccupied, t, currentDepth + 1, reversed);
   }
 }
 
@@ -114,14 +106,15 @@ function isTreeOccupied(
   y: number,
   x2: number,
   y2: number,
-  treeOccupied: boolean[][]) {
+  treeOccupied: boolean[][]): boolean {
   for (let i = 1; i <= steps; i++) {
     const tx = x + (x2 - x) * (i / steps);
     const ty = y + (y2 - y) * (i / steps);
     const tr = Math.floor(ty / GRID);
     const tc = Math.floor(tx / GRID);
-    if (treeOccupied[tr]?.[tc]) return;
+    if (treeOccupied[tr]?.[tc]) return true;
   }
+  return false;
 }
 
 function setTreeOccupied(
