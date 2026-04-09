@@ -49,12 +49,7 @@ function branch(
 
   const r = Math.floor(y / GRID);
   const c = Math.floor(x / GRID);
-  if (occupied[r]?.[c] || treeOccupied[r]?.[c]) return;
-
-  // 시작점 마킹 — 끝점 마킹하면 재귀 시작점이 막힘
-  if (r >= 0 && r < rows && c >= 0 && c < cols) {
-    treeOccupied[r][c] = true;
-  }
+  if (occupied[r]?.[c]) return;  // 이미지 영역만 체크, treeOccupied는 루프에서 처리
 
   const depthProgress = t * maxDepth;
   const localT = Math.min(1, depthProgress - currentDepth);
@@ -64,9 +59,30 @@ function branch(
   const x2 = x + Math.cos(angle) * actualLen;
   const y2 = y + Math.sin(angle) * actualLen;
 
+  // 선을 따라 모든 셀 체크 — 시작점(i=0)은 부모가 이미 마킹했으니 스킵
+  const steps = Math.ceil(actualLen / GRID);
+  for (let i = 1; i <= steps; i++) {
+    const tx = x + (x2 - x) * (i / steps);
+    const ty = y + (y2 - y) * (i / steps);
+    const tr = Math.floor(ty / GRID);
+    const tc = Math.floor(tx / GRID);
+    if (treeOccupied[tr]?.[tc]) return;
+  }
+
   p.stroke(params.color[0], params.color[1], params.color[2]);
   p.strokeWeight(1);
   p.line(x, y, x2, y2);
+
+  // 선을 따라 모든 셀 마킹
+  for (let i = 0; i <= steps; i++) {
+    const tx = x + (x2 - x) * (i / steps);
+    const ty = y + (y2 - y) * (i / steps);
+    const tr = Math.floor(ty / GRID);
+    const tc = Math.floor(tx / GRID);
+    if (tr >= 0 && tr < rows && tc >= 0 && tc < cols) {
+      treeOccupied[tr][tc] = true;
+    }
+  }
 
   if (localT >= 1) {
     branch(p, x2, y2, angle - params.spread, len * 0.7, maxDepth, params, occupied, treeOccupied, t, currentDepth + 1);
