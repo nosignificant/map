@@ -94,6 +94,7 @@ export function drawRiverPath(
   p: p5,
   path: Pos[],
   treeOccupied: boolean[][],
+  riverOccupied: boolean[][],
   t: number
 ) {
   const drawCount = Math.floor(t * (path.length / 2)) * 2;
@@ -110,9 +111,30 @@ export function drawRiverPath(
     const r = Math.floor(to.y / GRID);
     const c = Math.floor(to.x / GRID);
     if (treeOccupied[r]?.[c]) continue;
-    if (r >= 0 && r < ROWS && c >= 0 && c < COLS) treeOccupied[r][c] = true;
+    if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
+      treeOccupied[r][c] = true;
+      riverOccupied[r][c] = true;
+    }
 
     p.line(from.x, from.y, to.x, to.y);
+  }
+}
+
+// riverOccupied만 채우고 그리지 않음 (레이어 순서 조절용)
+export function markRiverOccupied(
+  path: Pos[],
+  riverOccupied: boolean[][],
+  t: number
+) {
+  const drawCount = Math.floor(t * (path.length / 2)) * 2;
+  for (let i = 0; i < drawCount; i += 2) {
+    const to = path[i + 1];
+    if (!to) break;
+    const r = Math.floor(to.y / GRID);
+    const c = Math.floor(to.x / GRID);
+    if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
+      riverOccupied[r][c] = true;
+    }
   }
 }
 

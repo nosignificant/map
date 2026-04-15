@@ -2,12 +2,12 @@
 import type p5 from "p5";
 import { getImg, MakeimgEdge, drawAllOccupied } from "./Util/image";
 import { drawOutline } from "./Util/drawings";
-import { buildRiverPath, drawRiverPath } from "./riverBranch";
-import { Pos, GRID, DISPLAY_SIZE, CANVAS_W, CANVAS_H, ImgSet, PlacedImage } from "./Util/types";
+import { buildRiverPath, drawRiverPath, markRiverOccupied } from "./riverBranch";
+import {  GRID, DISPLAY_SIZE, CANVAS_W, CANVAS_H, ImgSet, PlacedImage } from "./Util/types";
 import { drawTree } from "./proceduralTree";
 import {DEFAULT_TREE} from "./Util/treeTypes";
 
-const GROW_SPEED = 0.008;
+const GROW_SPEED = 0.05;
 
 type Corner2D = { x: number; y: number; angle: number };
 const screenCorners: Corner2D[] = [
@@ -30,6 +30,11 @@ export function createSketch(container: HTMLElement) {
       { length: CANVAS_H / GRID }, () => new Array(CANVAS_W / GRID).fill(false)
     );
 
+    // river이 차지한 그리드
+    const riverOccupied: boolean[][] = Array.from(
+      { length: CANVAS_H / GRID }, () => new Array(CANVAS_W / GRID).fill(false)
+    );
+
     // 코너 나무 성장 t
     let cornerGrowthT = 0;
 
@@ -42,7 +47,7 @@ export function createSketch(container: HTMLElement) {
         urls.forEach((url) => {
 
           //if (url.includes("특정문자열")) {
-          //aImages.push(loadedImg); 
+          //aImages.push(loadedImg);
 
           p.loadImage(url, (loadedImg) => {
             images.push(loadedImg);
@@ -63,28 +68,52 @@ export function createSketch(container: HTMLElement) {
     };
 
     function draw() {
-      p.background(0);
-      p.fill(255);
-      p.stroke(0);
-      p.strokeWeight(2);
-      p.rect(0, 0, CANVAS_W, CANVAS_H);
-
-      drawOutline(p, set, occupied);
-
       // 매 프레임 초기화
       for (let r = 0; r < treeOccupied.length; r++) treeOccupied[r].fill(false);
+      for (let r = 0; r < riverOccupied.length; r++) riverOccupied[r].fill(false);
 
+      // riverOccupied 미리 채우기 (그리기 전에)
       for (const img of set) {
         for (const pl of img.placements) {
-          p.image(img.img, pl.x, pl.y, DISPLAY_SIZE, DISPLAY_SIZE);
           for (const path of pl.riverPaths) {
-            drawRiverPath(p, path, treeOccupied, pl.growthT);
+            markRiverOccupied(path, riverOccupied, pl.growthT);
           }
         }
       }
 
-     for(const corner of screenCorners){
-drawTree(p, corner.x, corner.y, corner.angle, DEFAULT_TREE, occupied, treeOccupied, cornerGrowthT);     }
+      // ── 레이어 1: 배경
+      p.fill(100, 149, 237);
+      p.stroke(0);
+      p.strokeWeight(2);
+      p.rect(0, 0, CANVAS_W, CANVAS_H);
+
+      // ── 레이어 2: river 흰 네모 (제일 아래)
+      p.noStroke();
+      p.fill(255);
+      for (let r = 0; r < riverOccupied.length; r++) {
+        for (let c = 0; c < riverOccupied[r].length; c++) {
+          if (riverOccupied[r][c]) {
+            p.rect(c * GRID, r * GRID, GRID, GRID);
+          }
+        }
+      }
+
+      // ── 레이어 3: 이미지 + river 선
+      for (const img of set) {
+        for (const pl of img.placements) {
+          p.image(img.img, pl.x, pl.y, DISPLAY_SIZE, DISPLAY_SIZE);
+          for (const path of pl.riverPaths) {
+            drawRiverPath(p, path, treeOccupied, riverOccupied, pl.growthT);
+          }
+        }
+      }
+
+      // ── 레이어 4: 아웃라인 + 나무
+      drawOutline(p, set, occupied);
+
+      for(const corner of screenCorners){
+        drawTree(p, corner.x, corner.y, corner.angle, DEFAULT_TREE, occupied, treeOccupied, cornerGrowthT, riverOccupied);
+      }
     }
 
 
@@ -146,4 +175,3 @@ drawTree(p, corner.x, corner.y, corner.angle, DEFAULT_TREE, occupied, treeOccupi
     };
   };
 }
-
