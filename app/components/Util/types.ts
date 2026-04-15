@@ -10,10 +10,13 @@ export const CANVAS_H = 1080;
 export const rows = CANVAS_H / GRID;
 export const cols = CANVAS_W / GRID;
 
+export type RiverNode = { x: number; y: number };
+
 export type PlacedImage = {
   x: number;
   y: number;
   growthT: number;
+  riverPaths: RiverNode[][];  // 코너마다 경로
 };
 
 export type EdgeResult = {

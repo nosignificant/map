@@ -2,9 +2,8 @@
 import type p5 from "p5";
 import { getImg, MakeimgEdge, drawAllOccupied } from "./Util/image";
 import { drawOutline } from "./Util/drawings";
-import { drawTree } from "./proceduralTree";
-import { GRID, DISPLAY_SIZE, CANVAS_W, CANVAS_H, ImgSet, rows, cols } from "./Util/types";
-import { DEFAULT_TREE } from "./Util/treeTypes";
+import { buildRiverPath, drawRiverPath } from "./riverBranch";
+import { GRID, DISPLAY_SIZE, CANVAS_W, CANVAS_H, ImgSet, PlacedImage } from "./Util/types";
 
 
 const GROW_SPEED = 0.008;
@@ -67,10 +66,8 @@ export function createSketch(container: HTMLElement) {
       for (const img of set) {
         for (const pl of img.placements) {
           p.image(img.img, pl.x, pl.y, DISPLAY_SIZE, DISPLAY_SIZE);
-          for (const corner of img.corners) {
-            const cx = pl.x + (corner.ci - 1) * GRID + GRID / 2;
-            const cy = pl.y + (corner.ri - 1) * GRID + GRID / 2;
-            drawTree(p, cx, cy, corner.angle, DEFAULT_TREE, occupied, treeOccupied, pl.growthT);
+          for (const path of pl.riverPaths) {
+            drawRiverPath(p, path, treeOccupied, pl.growthT);
           }
         }
       }
@@ -98,7 +95,19 @@ export function createSketch(container: HTMLElement) {
       if (!img) return;
       if (p.mouseX < 0 || p.mouseX > CANVAS_W || p.mouseY < 0 || p.mouseY > CANVAS_H) return;
 
-      img.placements.push({ x: p.mouseX - DISPLAY_SIZE / 2, y: p.mouseY - DISPLAY_SIZE / 2, growthT: 0 });
+      const pl: PlacedImage = { x: p.mouseX - DISPLAY_SIZE / 2, y: p.mouseY - DISPLAY_SIZE / 2, growthT: 0, riverPaths: [] };
+      const offsetMap = img.edgeResult.offsetMap;
+      const STEP = 3;
+      for (let ri = 0; ri < offsetMap.length; ri++) {
+        for (let ci = 0; ci < offsetMap[0].length; ci++) {
+          if (!offsetMap[ri][ci]) continue;
+          if ((ri + ci) % STEP !== 0) continue;
+          const cx = pl.x + (ci - 1) * GRID;
+          const cy = pl.y + (ri - 1) * GRID;
+          pl.riverPaths.push(buildRiverPath(cx, cy, occupied));
+        }
+      }
+      img.placements.push(pl);
       occupied = drawAllOccupied(set);
       console.log("corners:", img.corners.length, img.corners);
       console.log("placements:", img.placements);

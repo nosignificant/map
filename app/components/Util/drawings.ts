@@ -33,3 +33,7 @@ export function drawCircleCross(p: p5, x: number, y: number) {
     p.strokeWeight(1);
     p.circle(x + GRID / 2, y + GRID / 2, GRID);
 }
+
+export function draw15line() {
+    //이거해야됨 
+}
