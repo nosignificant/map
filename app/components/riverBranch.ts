@@ -1,44 +1,39 @@
 import type p5 from "p5";
-import { GRID, CANVAS_W, CANVAS_H, RiverNode } from "./Util/types";
+import { GRID, CANVAS_W, CANVAS_H, Pos } from "./Util/types";
 
 const ROWS = CANVAS_H / GRID;
 const COLS = CANVAS_W / GRID;
-const MAX_NODES = 200;
+const MAX_NODES = 20;
 const BRANCH_CHANCE = 0.25;
 
-// ── 삼각형 노드 ───────────────────────────────────────────────────────────
+// ── 그리드 노드 ───────────────────────────────────────────────────────────
 
-type TriNode = { ci: number; ri: number; isTop: boolean };
+type GridNode = { ci: number; ri: number };
 
-function getCenter(node: TriNode): RiverNode {
-  const baseX = node.ci * GRID;
-  const baseY = node.ri * GRID;
-  return node.isTop
-    ? { x: baseX + (2 * GRID) / 3, y: baseY + GRID / 3 }
-    : { x: baseX + GRID / 3, y: baseY + (2 * GRID) / 3 };
+function getCenter(node: GridNode): Pos {
+  return {
+    x: node.ci * GRID + GRID / 2,
+    y: node.ri * GRID + GRID / 2,
+  };
 }
 
-function getNeighbors(node: TriNode): TriNode[] {
-  const { ci, ri, isTop } = node;
-  const candidates = isTop
-    ? [
-        { ci, ri, isTop: false },
-        { ci: ci + 1, ri, isTop: true },
-        { ci, ri: ri - 1, isTop: false },
-      ]
-    : [
-        { ci, ri, isTop: true },
-        { ci: ci - 1, ri, isTop: false },
-        { ci, ri: ri + 1, isTop: true },
-      ];
-
-  return candidates.filter(
-    (n) => n.ci >= 0 && n.ci < COLS && n.ri >= 0 && n.ri < ROWS
-  );
+// 8방향 이웃
+function getNeighbors(node: GridNode): GridNode[] {
+  const { ci, ri } = node;
+  return [
+    { ci: ci + 1, ri },
+    { ci: ci - 1, ri },
+    { ci, ri: ri + 1 },
+    { ci, ri: ri - 1 },
+    { ci: ci + 1, ri: ri + 1 },
+    { ci: ci - 1, ri: ri - 1 },
+    { ci: ci + 1, ri: ri - 1 },
+    { ci: ci - 1, ri: ri + 1 },
+  ].filter((n) => n.ci >= 0 && n.ci < COLS && n.ri >= 0 && n.ri < ROWS);
 }
 
-function nodeKey(node: TriNode) {
-  return `${node.ci},${node.ri},${node.isTop ? 1 : 0}`;
+function nodeKey(node: GridNode) {
+  return `${node.ci},${node.ri}`;
 }
 
 // ── 경로 한 번만 계산 ─────────────────────────────────────────────────────
@@ -47,49 +42,44 @@ export function buildRiverPath(
   startX: number,
   startY: number,
   occupied: boolean[][]
-): RiverNode[] {
+): Pos[] {
   const startCi = Math.floor(startX / GRID);
   const startRi = Math.floor(startY / GRID);
-  // 대각선 기준: x%GRID > y%GRID 이면 top 삼각형
-  const startIsTop = startX % GRID > startY % GRID;
 
-  const path: RiverNode[] = [];
+  const path: Pos[] = [];
   const visited = new Set<string>();
 
-  // DFS 스택: { node, parentPos }
-  const stack: { node: TriNode; parentPos: RiverNode }[] = [
+  const stack: { node: GridNode; parentPos: Pos }[] = [
     {
-      node: { ci: startCi, ri: startRi, isTop: startIsTop },
+      node: { ci: startCi, ri: startRi },
       parentPos: { x: startX, y: startY },
     },
   ];
 
-  while (stack.length > 0 && path.length < MAX_NODES) {
+  //스택 안에 뭐가 있고 다녀간 곳 길이가 최대 노드 이하일때
+  while (stack.length > 0 && path.length < MAX_NODES * 2) {
+    
+    //그리드 상 위치랑 픽셀 위치 꺼냄 
     const { node, parentPos } = stack.pop()!;
+    
+    //그리드 상 위치 - visited 에 있는지 확인 
     const key = nodeKey(node);
     if (visited.has(key)) continue;
 
-    // occupied 체크
     const { x, y } = getCenter(node);
     const r = Math.floor(y / GRID);
     const c = Math.floor(x / GRID);
     if (occupied[r]?.[c]) continue;
 
     visited.add(key);
-
-    // 이전 점 → 현재 점 선분을 경로에 추가 (쌍으로 저장)
     path.push(parentPos, { x, y });
 
-    // 이웃 섞어서 스택에 추가
     const neighbors = getNeighbors(node).filter((n) => !visited.has(nodeKey(n)));
     shuffle(neighbors);
 
-    // 메인 가지
     if (neighbors.length > 0) {
       stack.push({ node: neighbors[0], parentPos: { x, y } });
     }
-
-    // 분기
     if (neighbors.length > 1 && Math.random() < BRANCH_CHANCE) {
       stack.push({ node: neighbors[1], parentPos: { x, y } });
     }
@@ -102,11 +92,11 @@ export function buildRiverPath(
 
 export function drawRiverPath(
   p: p5,
-  path: RiverNode[],
+  path: Pos[],
   treeOccupied: boolean[][],
   t: number
 ) {
-  const drawCount = Math.floor(t * (path.length / 2)) * 2; // 쌍 단위로 자르기
+  const drawCount = Math.floor(t * (path.length / 2)) * 2;
 
   p.stroke(40);
   p.strokeWeight(1);

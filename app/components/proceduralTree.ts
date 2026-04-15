@@ -39,6 +39,9 @@ function branch(
   currentDepth: number,
   reversed: number
 ) {
+  // 캔버스 밖이면 그냥 멈춤
+  if (x < 0 || x > CANVAS_W || y < 0 || y > CANVAS_H) return;
+
   if (currentDepth >= maxDepth || len < 2) {
     drawCircleCross(p, x, y);
     return;
