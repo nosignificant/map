@@ -1,10 +1,8 @@
 import type p5 from "p5";
 import { Pos, Grid } from "./Util/types";
-import { GRID, CANVAS_W, CANVAS_H } from "./Util/constant";
-import { dilate } from "./Util/edgeDetection";
+import { GRID, rows, cols } from "./Util/constant";
+import { dilate } from "./Util/edgeAndCorner";
 
-const ROWS = CANVAS_H / GRID;
-const COLS = CANVAS_W / GRID;
 const MAX_NODES = 20;
 const BRANCH_CHANCE = 0.25;
 
@@ -38,7 +36,7 @@ function getNeighbors(node: Grid): Grid[] {
     if (Math.random() < 0.15) result.push(d); // 15% 확률로만 포함
   }
   return result.filter(
-    (n) => n.ci >= 0 && n.ci < COLS && n.ri >= 0 && n.ri < ROWS
+    (n) => n.ci >= 0 && n.ci < cols && n.ri >= 0 && n.ri < rows
   );
 }
 
@@ -128,7 +126,7 @@ export function drawRiverPath(
     const r = Math.floor(to.y / GRID);
     const c = Math.floor(to.x / GRID);
     if (treeOccupied[r]?.[c]) continue;
-    if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
+    if (r >= 0 && r < rows && c >= 0 && c < cols) {
       treeOccupied[r][c] = true;
       riverOccupied[r][c] = true;
     }
@@ -149,29 +147,6 @@ export function riverRect(p: p5, riverOccupied: boolean[][]) {
   }
 }
 
-export function offsetRiverRect(p: p5, riverOccupied: boolean[][]) {
-  const dil = dilate(riverOccupied);
-
-  p.stroke(255, 0, 0);
-  p.strokeWeight(1);
-  p.noFill();
-
-  for (let r = 0; r < dil.length; r++) {
-    for (let c = 0; c < dil[r].length; c++) {
-      if (!dil[r][c]) continue; // dil 셀만
-
-      const x = c * GRID;
-      const y = r * GRID;
-
-      // dil 바깥 면에 선
-      if (!dil[r - 1]?.[c]) p.line(x, y, x + GRID, y);
-      if (!dil[r + 1]?.[c]) p.line(x, y + GRID, x + GRID, y + GRID);
-      if (!dil[r]?.[c - 1]) p.line(x, y, x, y + GRID);
-      if (!dil[r]?.[c + 1]) p.line(x + GRID, y, x + GRID, y + GRID);
-    }
-  }
-}
-
 // riverOccupied만 채우고 그리지 않음 (레이어 순서 조절용)
 export function markRiverOccupied(
   path: Pos[],
@@ -184,7 +159,7 @@ export function markRiverOccupied(
     if (!to) break;
     const r = Math.floor(to.y / GRID);
     const c = Math.floor(to.x / GRID);
-    if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
+    if (r >= 0 && r < rows && c >= 0 && c < cols) {
       riverOccupied[r][c] = true;
     }
   }

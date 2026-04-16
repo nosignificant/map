@@ -1,24 +1,7 @@
 import type p5 from "p5";
-import { buildEdgeMap } from "./edgeDetection";
+import { buildEdgeMap, findSimpleCorners } from "./edgeAndCorner";
 import { ImgSet } from "./types";
 import { GRID, rows, cols } from "./constant";
-import { findSimpleCorners } from "./cornerDetection";
-
-export function MakeimgEdge(p: p5, images: p5.Image[]): ImgSet[] {
-  const result: ImgSet[] = [];
-
-  images.forEach((img) => {
-    const edge = buildEdgeMap(p, img);
-    result.push({
-      img: img,
-      edgeResult: edge,
-      placements: [],
-      corners: findSimpleCorners(edge.offsetMap),
-    });
-  });
-
-  return result;
-}
 
 export function getImg(images: ImgSet[], force: number): ImgSet {
   //여기에 아두이노 연결했을 때 로직 넣기
@@ -32,7 +15,7 @@ export function drawAllOccupied(set: ImgSet[]): boolean[][] {
     const imgRows = img.edgeResult.drawnPixel.length;
     const imgCols = img.edgeResult.drawnPixel[0]?.length ?? 0;
 
-    for (const pl of img.placements) {
+    for (const pl of img.PlacedImage) {
       // 픽셀 좌표 → 그리드 인덱스
       const startRow = Math.floor(pl.pos.y / GRID);
       const startCol = Math.floor(pl.pos.x / GRID);

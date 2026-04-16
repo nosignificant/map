@@ -1,20 +1,15 @@
 // 유니티 MonoBehaviour 역할 — setup(), draw(), 이벤트
 import type p5 from "p5";
 import { ImgSet, PlacedImage } from "./Util/types";
-import { getImg, MakeimgEdge, drawAllOccupied } from "./Util/image";
+import { getImg, drawAllOccupied } from "./Util/image";
+import { MakeImgSet } from "./Util/edgeAndCorner";
 import {
-  drawOutline,
+  drawOffsetOccupied,
   backGroundSetup,
   backGrid,
   backMiniGrid,
 } from "./Util/drawings";
-import {
-  buildRiverPath,
-  drawRiverPath,
-  markRiverOccupied,
-  riverRect,
-  offsetRiverRect,
-} from "./riverBranch";
+import { buildRiverPath, markRiverOccupied, riverRect } from "./riverBranch";
 import { drawTree } from "./proceduralTree";
 import {
   GRID,
@@ -22,7 +17,7 @@ import {
   CANVAS_W,
   CANVAS_H,
   DEFAULT_TREE,
-  screenCorners,
+  RIVER_STEP,
 } from "./Util/constant";
 
 const GROW_SPEED = 0.009;
@@ -63,7 +58,7 @@ export function createSketch(container: HTMLElement) {
             images.push(loadedImg);
             loaded++;
             if (loaded === urls.length) {
-              set = MakeimgEdge(p, images);
+              set = MakeImgSet(p, images);
               p.redraw();
             }
           });
@@ -78,52 +73,48 @@ export function createSketch(container: HTMLElement) {
     };
 
     function draw() {
-      // 매 프레임 초기화
+      //나무 , 강 occupied 초기화
       for (let r = 0; r < treeOccupied.length; r++) treeOccupied[r].fill(false);
       for (let r = 0; r < riverOccupied.length; r++)
         riverOccupied[r].fill(false);
 
-      // ── 레이어 1: 배경
+      // 1. 배경레이어
       backGroundSetup(p);
 
       // riverOccupied 미리 채우기 (그리기 전에)
       for (const img of set) {
-        for (const pl of img.placements) {
+        for (const pl of img.PlacedImage) {
           for (const path of pl.riverPaths) {
             markRiverOccupied(path, riverOccupied, pl.growthT);
           }
         }
       }
 
-      // ── 레이어 2: river 흰 네모 (제일 아래)
+      // ── 레이어 2: river 네모 (제일 아래)
       riverRect(p, riverOccupied);
 
       // ── 레이어 3: 이미지 + river 선
       for (const img of set) {
-        for (const pl of img.placements) {
+        console.log("corners:", img.corners.length);
+        for (const pl of img.PlacedImage) {
           p.image(img.img, pl.pos.x, pl.pos.y, DISPLAY_SIZE, DISPLAY_SIZE);
-          for (const path of pl.riverPaths) {
-            //drawRiverPath(p, path, treeOccupied, riverOccupied, pl.growthT);
+          for (const c of img.corners) {
+            drawTree(
+              p,
+              { x: pl.pos.x + c.pos.x, y: pl.pos.y + c.pos.y }, // ← pl.pos 더하기
+              c.angle,
+              DEFAULT_TREE,
+              occupied,
+              treeOccupied,
+              pl.growthT
+            );
           }
         }
       }
 
-      // ── 레이어 4: 아웃라인 + 나무
-      drawOutline(p, set, occupied);
-      offsetRiverRect(p, riverOccupied);
-
-      for (const corner of screenCorners) {
-        drawTree(
-          p,
-          corner.pos,
-          corner.angle,
-          DEFAULT_TREE,
-          occupied,
-          treeOccupied,
-          cornerGrowthT,
-          riverOccupied
-        );
-      }
+      // ── 레이어 4: 아웃라인
+      //drawOutline(p, set, occupied);
+      drawOffsetOccupied(p, treeOccupied);
       backGrid(p);
       backMiniGrid(p);
     }
@@ -138,7 +129,7 @@ export function createSketch(container: HTMLElement) {
       }
 
       for (const img of set) {
-        for (const pl of img.placements) {
+        for (const pl of img.PlacedImage) {
           if (pl.growthT < 1) {
             pl.growthT = Math.min(1, pl.growthT + GROW_SPEED);
             anyGrowing = true;
@@ -150,6 +141,7 @@ export function createSketch(container: HTMLElement) {
 
     // ── 이벤트 ───────────────────────────────────────────────────────────
     p.mouseClicked = () => {
+      //이미지 가져오는 로직 여기
       const img = getImg(set, 0);
       if (!img) return;
       if (
@@ -162,31 +154,32 @@ export function createSketch(container: HTMLElement) {
 
       const pl: PlacedImage = {
         pos: {
+          //이미지 위치할 좌표는 이미지 중심 지점에
           x: p.mouseX - DISPLAY_SIZE / 2,
           y: p.mouseY - DISPLAY_SIZE / 2,
         },
         growthT: 0,
         riverPaths: [],
       };
-      const offsetMap = img.edgeResult.offsetMap;
-      const STEP = 3;
-      for (let ri = 0; ri < offsetMap.length; ri++) {
-        for (let ci = 0; ci < offsetMap[0].length; ci++) {
-          if (!offsetMap[ri][ci]) continue;
-          if ((ri + ci) % STEP !== 0) continue;
+      //외곽 테두리
+      const outline = img.edgeResult.outline;
+      for (let ri = 0; ri < outline.length; ri++) {
+        for (let ci = 0; ci < outline[0].length; ci++) {
+          if (!outline[ri][ci]) continue;
+          if ((ri + ci) % RIVER_STEP !== 0) continue;
           const cx = pl.pos.x + (ci - 1) * GRID;
           const cy = pl.pos.y + (ri - 1) * GRID;
           pl.riverPaths.push(buildRiverPath(cx, cy, occupied));
         }
       }
-      img.placements.push(pl);
+      img.PlacedImage.push(pl);
       occupied = drawAllOccupied(set);
       p.loop();
     };
 
     p.keyPressed = () => {
       if (p.key === "r" || p.key === "R") {
-        for (const img of set) img.placements = [];
+        for (const img of set) img.PlacedImage = [];
         occupied = drawAllOccupied(set);
         p.redraw();
       }
