@@ -1,5 +1,3 @@
-import type p5 from "p5";
-import { buildEdgeMap, findSimpleCorners } from "./edgeAndCorner";
 import { ImgSet } from "./types";
 import { GRID, rows, cols } from "./constant";
 
@@ -24,8 +22,7 @@ export function drawAllOccupied(set: ImgSet[]): boolean[][] {
         for (let ci = 0; ci < imgCols; ci++) {
           const outRow = startRow + ri;
           const outCol = startCol + ci;
-          if (outRow < 0 || outRow >= rows || outCol < 0 || outCol >= cols)
-            continue;
+          if (outRow < 0 || outRow >= rows || outCol < 0 || outCol >= cols) continue;
           out[outRow][outCol] ||= img.edgeResult.drawnPixel[ri][ci];
         }
       }

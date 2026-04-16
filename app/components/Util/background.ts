@@ -1,0 +1,47 @@
+import type p5 from "p5";
+import { GRID, CANVAS_W, CANVAS_H, rows, cols } from "./constant";
+
+export function backGroundSetup(p: p5) {
+  p.fill(100, 150, 255);
+  p.stroke(0);
+  p.strokeWeight(2);
+  p.rect(0, 0, CANVAS_W, CANVAS_H);
+}
+
+export function backGrid(p: p5) {
+  const split = 5;
+
+  const spacingH = CANVAS_H / split;
+  const spacingW = CANVAS_W / split;
+  for (let i = 0; i < split; i++) {
+    const x = spacingW * i + spacingW;
+    const y = spacingH * i + spacingH;
+
+    p.strokeWeight(1);
+    p.stroke(255, 255, 255);
+
+    p.line(x, 0, x, CANVAS_H);
+    p.line(0, y, CANVAS_W, y);
+  }
+
+  for (let row = 0; row < split; row++) {
+    for (let col = 0; col < split; col++) {
+      const cx = spacingW * (col + 1);
+      const cy = spacingH * (row + 1);
+      p.circle(cx, cy, 5);
+    }
+  }
+}
+
+export function backMiniGrid(p: p5) {
+  for (let ri = 0; ri < rows; ri++) {
+    for (let ci = 0; ci < cols; ci++) {
+      const x = ci * GRID;
+      const y = ri * GRID;
+
+      p.strokeWeight(0);
+      p.fill(100, 100, 100);
+      p.circle(x, y, 2);
+    }
+  }
+}

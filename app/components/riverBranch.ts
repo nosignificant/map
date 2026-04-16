@@ -1,7 +1,7 @@
 import type p5 from "p5";
 import { Pos, Grid } from "./Util/types";
 import { GRID, rows, cols } from "./Util/constant";
-import { dilate } from "./Util/edgeAndCorner";
+import { drawCircleCross, drawTwoCircle } from "./Util/drawings";
 
 const MAX_NODES = 20;
 const BRANCH_CHANCE = 0.25;
@@ -31,13 +31,11 @@ function getNeighbors(node: Grid): Grid[] {
     { ci: ci - 1, ri: ri + 1 },
   ];
 
-  const result = [...straight];
+  const result = [...straight]; //새 객체를 만드는 건듯?
   for (const d of diagonal) {
     if (Math.random() < 0.15) result.push(d); // 15% 확률로만 포함
   }
-  return result.filter(
-    (n) => n.ci >= 0 && n.ci < cols && n.ri >= 0 && n.ri < rows
-  );
+  return result.filter((n) => n.ci >= 0 && n.ci < cols && n.ri >= 0 && n.ri < rows);
 }
 
 function nodeKey(node: Grid) {
@@ -46,11 +44,7 @@ function nodeKey(node: Grid) {
 
 // ── 경로 한 번만 계산 ─────────────────────────────────────────────────────
 
-export function buildRiverPath(
-  startX: number,
-  startY: number,
-  occupied: boolean[][]
-): Pos[] {
+export function buildRiverPath(startX: number, startY: number, occupied: boolean[][]): Pos[] {
   const startCi = Math.floor(startX / GRID);
   const startRi = Math.floor(startY / GRID);
 
@@ -87,17 +81,16 @@ export function buildRiverPath(
     path.push(parentPos, { x, y });
 
     //마지막으로 간 곳의 8방향
-    const neighbors = getNeighbors(node).filter(
-      (n) => !visited.has(nodeKey(n))
-    );
+    const neighbors = getNeighbors(node).filter((n) => !visited.has(nodeKey(n)));
     shuffle(neighbors);
 
     if (neighbors.length > 0) {
       stack.push({ node: neighbors[0], parentPos: { x, y } });
     }
-    if (neighbors.length > 1 && Math.random() < BRANCH_CHANCE) {
-      stack.push({ node: neighbors[1], parentPos: { x, y } });
-    }
+    //가지 두개 그리기
+    //if (neighbors.length > 1 && Math.random() < BRANCH_CHANCE) {
+    //  stack.push({ node: neighbors[1], parentPos: { x, y } });
+    //}
   }
 
   return path;
@@ -105,39 +98,21 @@ export function buildRiverPath(
 
 // ── 매 프레임 t만큼만 그리기 ──────────────────────────────────────────────
 
-export function drawRiverPath(
-  p: p5,
-  pos: Pos[],
-  treeOccupied: boolean[][],
-  riverOccupied: boolean[][],
-  t: number
-) {
-  const drawCount = Math.floor(t * (pos.length / 2)) * 2;
-
-  p.stroke(40);
-  p.strokeWeight(1);
-  p.noFill();
-
-  for (let i = 0; i < drawCount; i += 2) {
-    const from = pos[i];
+export function drawAlongRiver(p: p5, pos: Pos[], riverOccupied: boolean[][], t: number) {
+  for (let i = 0; i < pos.length; i++) {
     const to = pos[i + 1];
-    if (!from || !to) break;
+    if (!to) break;
 
-    const r = Math.floor(to.y / GRID);
-    const c = Math.floor(to.x / GRID);
-    if (treeOccupied[r]?.[c]) continue;
-    if (r >= 0 && r < rows && c >= 0 && c < cols) {
-      treeOccupied[r][c] = true;
-      riverOccupied[r][c] = true;
-    }
+    const segIndex = i; // 1, 2, 3, 4 ...
 
-    p.line(from.x, from.y, to.x, to.y);
+    if (i === 1 || i === 2 || i === 3) drawTwoCircle(p, to, 4);
+    if (i === 4 || i === 5 || i === 6) drawCircleCross(p, to);
   }
 }
 
 export function riverRect(p: p5, riverOccupied: boolean[][]) {
   p.noStroke();
-  p.fill(100, 150, 255);
+  p.fill(255, 255, 255);
   for (let r = 0; r < riverOccupied.length; r++) {
     for (let c = 0; c < riverOccupied[r].length; c++) {
       if (riverOccupied[r][c]) {
@@ -148,11 +123,7 @@ export function riverRect(p: p5, riverOccupied: boolean[][]) {
 }
 
 // riverOccupied만 채우고 그리지 않음 (레이어 순서 조절용)
-export function markRiverOccupied(
-  path: Pos[],
-  riverOccupied: boolean[][],
-  t: number
-) {
+export function markRiverOccupied(path: Pos[], riverOccupied: boolean[][], t: number) {
   const drawCount = Math.floor(t * (path.length / 2)) * 2;
   for (let i = 0; i < drawCount; i += 2) {
     const to = path[i + 1];

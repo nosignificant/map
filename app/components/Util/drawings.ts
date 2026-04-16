@@ -1,8 +1,9 @@
 import type p5 from "p5";
-import { ImgSet } from "./types";
+import { ImgSet, Pos } from "./types";
 import { GRID, CANVAS_W, CANVAS_H, rows, cols } from "./constant";
 import { dilate } from "./edgeAndCorner";
 
+//이미지 외곽 그리기
 export function drawOutline(p: p5, set: ImgSet[], occupied: boolean[][]) {
   p.fill(0);
   p.noStroke();
@@ -28,56 +29,7 @@ export function drawOutline(p: p5, set: ImgSet[], occupied: boolean[][]) {
   }
 }
 
-export function backGrid(p: p5) {
-  const split = 5;
-
-  const spacingH = CANVAS_H / split;
-  const spacingW = CANVAS_W / split;
-  for (let i = 0; i < split; i++) {
-    const x = spacingW * i + spacingW;
-    const y = spacingH * i + spacingH;
-
-    p.strokeWeight(1);
-    p.stroke(0, 0, 255);
-
-    p.line(x, 0, x, CANVAS_H);
-    p.line(0, y, CANVAS_W, y);
-  }
-
-  for (let row = 0; row < split; row++) {
-    for (let col = 0; col < split; col++) {
-      const cx = spacingW * (col + 1);
-      const cy = spacingH * (row + 1);
-      p.circle(cx, cy, 5);
-    }
-  }
-}
-
-export function backMiniGrid(p: p5) {
-  for (let ri = 0; ri < rows; ri++) {
-    for (let ci = 0; ci < cols; ci++) {
-      const x = ci * GRID;
-      const y = ri * GRID;
-
-      p.strokeWeight(0);
-      p.fill(100, 100, 100);
-      p.circle(x, y, 2);
-    }
-  }
-}
-
-export function drawCircleCross(p: p5, x: number, y: number) {
-  p.fill(255, 0);
-  p.stroke(0);
-  p.strokeWeight(1);
-  p.circle(x, y, GRID);
-}
-export function backGroundSetup(p: p5) {
-  p.fill(255, 255, 255);
-  p.stroke(0);
-  p.strokeWeight(2);
-  p.rect(0, 0, CANVAS_W, CANVAS_H);
-}
+//occupied 된거 +1 해서 그리기
 export function drawOffsetOccupied(p: p5, src: boolean[][]) {
   const dil = dilate(src);
 
@@ -99,4 +51,25 @@ export function drawOffsetOccupied(p: p5, src: boolean[][]) {
       if (!dil[r]?.[c + 1]) p.line(x + GRID, y, x + GRID, y + GRID);
     }
   }
+}
+
+// draw small things
+export function drawTwoCircle(p: p5, pos: Pos, r: number) {
+  p.noFill();
+  p.stroke(255, 220, 0);
+  p.strokeWeight(1);
+  p.circle(pos.x, pos.y, r);
+  p.circle(pos.x, pos.y, r / 2);
+}
+
+export function drawCircleCross(p: p5, pos: Pos) {
+  p.noFill();
+  p.stroke(255, 220, 0);
+  p.strokeWeight(1);
+  p.circle(pos.x, pos.y, GRID);
+
+  const startX = pos.x - GRID / 4;
+  const startY = pos.y - GRID / 4;
+  p.line(startX, pos.y, startX + GRID / 2, pos.y);
+  p.line(pos.x, startY, pos.x, startY + GRID / 2);
 }

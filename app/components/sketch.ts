@@ -3,22 +3,11 @@ import type p5 from "p5";
 import { ImgSet, PlacedImage } from "./Util/types";
 import { getImg, drawAllOccupied } from "./Util/image";
 import { MakeImgSet } from "./Util/edgeAndCorner";
-import {
-  drawOffsetOccupied,
-  backGroundSetup,
-  backGrid,
-  backMiniGrid,
-} from "./Util/drawings";
-import { buildRiverPath, markRiverOccupied, riverRect } from "./riverBranch";
+import { drawOffsetOccupied } from "./Util/drawings";
+import { backGroundSetup, backGrid, backMiniGrid } from "./Util/background";
+import { buildRiverPath, drawAlongRiver, markRiverOccupied, riverRect } from "./riverBranch";
 import { drawTree } from "./proceduralTree";
-import {
-  GRID,
-  DISPLAY_SIZE,
-  CANVAS_W,
-  CANVAS_H,
-  DEFAULT_TREE,
-  RIVER_STEP,
-} from "./Util/constant";
+import { GRID, DISPLAY_SIZE, CANVAS_W, CANVAS_H, DEFAULT_TREE, RIVER_STEP } from "./Util/constant";
 
 const GROW_SPEED = 0.009;
 
@@ -31,15 +20,13 @@ export function createSketch(container: HTMLElement) {
     let occupied: boolean[][] = [];
 
     // 나무 그린 영역
-    const treeOccupied: boolean[][] = Array.from(
-      { length: CANVAS_H / GRID },
-      () => new Array(CANVAS_W / GRID).fill(false)
+    const treeOccupied: boolean[][] = Array.from({ length: CANVAS_H / GRID }, () =>
+      new Array(CANVAS_W / GRID).fill(false)
     );
 
-    // river이 차지한 그리드
-    const riverOccupied: boolean[][] = Array.from(
-      { length: CANVAS_H / GRID },
-      () => new Array(CANVAS_W / GRID).fill(false)
+    // 강 그린 영역
+    const riverOccupied: boolean[][] = Array.from({ length: CANVAS_H / GRID }, () =>
+      new Array(CANVAS_W / GRID).fill(false)
     );
 
     // 코너 나무 성장 t
@@ -75,8 +62,7 @@ export function createSketch(container: HTMLElement) {
     function draw() {
       //나무 , 강 occupied 초기화
       for (let r = 0; r < treeOccupied.length; r++) treeOccupied[r].fill(false);
-      for (let r = 0; r < riverOccupied.length; r++)
-        riverOccupied[r].fill(false);
+      for (let r = 0; r < riverOccupied.length; r++) riverOccupied[r].fill(false);
 
       // 1. 배경레이어
       backGroundSetup(p);
@@ -98,6 +84,11 @@ export function createSketch(container: HTMLElement) {
         console.log("corners:", img.corners.length);
         for (const pl of img.PlacedImage) {
           p.image(img.img, pl.pos.x, pl.pos.y, DISPLAY_SIZE, DISPLAY_SIZE);
+
+          for (const path of pl.riverPaths) {
+            drawAlongRiver(p, path, riverOccupied, pl.growthT);
+          }
+
           for (const c of img.corners) {
             drawTree(
               p,
@@ -144,17 +135,11 @@ export function createSketch(container: HTMLElement) {
       //이미지 가져오는 로직 여기
       const img = getImg(set, 0);
       if (!img) return;
-      if (
-        p.mouseX < 0 ||
-        p.mouseX > CANVAS_W ||
-        p.mouseY < 0 ||
-        p.mouseY > CANVAS_H
-      )
-        return;
+      if (p.mouseX < 0 || p.mouseX > CANVAS_W || p.mouseY < 0 || p.mouseY > CANVAS_H) return;
 
       const pl: PlacedImage = {
         pos: {
-          //이미지 위치할 좌표는 이미지 중심 지점에
+          //이미지 왼쪽 위 귀퉁이 좌표
           x: p.mouseX - DISPLAY_SIZE / 2,
           y: p.mouseY - DISPLAY_SIZE / 2,
         },
@@ -165,10 +150,11 @@ export function createSketch(container: HTMLElement) {
       const outline = img.edgeResult.outline;
       for (let ri = 0; ri < outline.length; ri++) {
         for (let ci = 0; ci < outline[0].length; ci++) {
-          if (!outline[ri][ci]) continue;
-          if ((ri + ci) % RIVER_STEP !== 0) continue;
-          const cx = pl.pos.x + (ci - 1) * GRID;
-          const cy = pl.pos.y + (ri - 1) * GRID;
+          if (!outline[ri][ci]) continue; //bool 이라서 false면 안 그림
+          if ((ri + ci) % RIVER_STEP !== 0) continue; // 3칸마다 하나그림
+
+          const cx = pl.pos.x + ci * GRID;
+          const cy = pl.pos.y + ri * GRID;
           pl.riverPaths.push(buildRiverPath(cx, cy, occupied));
         }
       }

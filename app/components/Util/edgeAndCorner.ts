@@ -32,9 +32,7 @@ export function buildEdgeMap(p: p5, image: p5.Image): EdgeResult {
   const rows = Math.ceil(DISPLAY_SIZE / GRID);
 
   // 이미지 영역이 차지하는 그리드
-  const drawnPixel: boolean[][] = Array.from({ length: rows }, () =>
-    new Array(cols).fill(false)
-  );
+  const drawnPixel: boolean[][] = Array.from({ length: rows }, () => new Array(cols).fill(false));
 
   for (let ri = 0; ri < rows; ri++) {
     for (let ci = 0; ci < cols; ci++) {
@@ -70,7 +68,7 @@ export function buildEdgeMap(p: p5, image: p5.Image): EdgeResult {
 
 // 엣지맵 팽창 → 끊긴 틈 메우기
 export function dilate(src: boolean[][]): boolean[][] {
-  const rows = src.length; // 넘어온 배열 크기 그대로
+  const rows = src.length;
   const cols = src[0]?.length ?? 0;
   const out = Array.from({ length: rows }, () => new Array(cols).fill(false));
   const dirs = [
@@ -92,7 +90,7 @@ export function dilate(src: boolean[][]): boolean[][] {
         continue;
       }
 
-      //ri, ci에 대해 모든 방향 검사
+      //이웃이 true면 나도 true
       for (const [dr, dc] of dirs) {
         const nr = ri + dr,
           nc = ci + dc;
@@ -107,21 +105,14 @@ export function dilate(src: boolean[][]): boolean[][] {
   return out;
 }
 
-// 채워진 영역 바깥 1칸 테두리 추출
-// 출력은 (rows+2) × (cols+2) — 이미지 경계 바깥 1칸도 포함
-export function computeOffsetMap(
-  dilateMap: boolean[][],
-  drawnMap: boolean[][]
-): boolean[][] {
+export function computeOffsetMap(dilateMap: boolean[][], drawnMap: boolean[][]): boolean[][] {
   const rows = dilateMap.length;
   const cols = dilateMap[0]?.length ?? 0;
-  const out = Array.from({ length: rows + 2 }, () =>
-    new Array(cols + 2).fill(false)
-  );
+  const out = Array.from({ length: rows }, () => new Array(cols).fill(false));
 
   for (let ri = 0; ri < rows; ri++) {
     for (let ci = 0; ci < cols; ci++) {
-      out[ri + 1][ci + 1] = dilateMap[ri][ci] && !drawnMap[ri][ci];
+      out[ri][ci] = dilateMap[ri][ci] && !drawnMap[ri][ci];
     }
   }
 
@@ -160,9 +151,7 @@ export function findSimpleCorners(offsetMap: boolean[][]): Corner[] {
       if (!isCorner) continue;
 
       // T자/십자(방향이 3개 이상)는 단순 코너가 아니므로 제외
-      const dirCount = [hasUp, hasDown, hasLeft, hasRight].filter(
-        Boolean
-      ).length;
+      const dirCount = [hasUp, hasDown, hasLeft, hasRight].filter(Boolean).length;
       if (dirCount > 2) continue;
 
       // 대각선 방향 결정 (코너가 향하는 바깥쪽)

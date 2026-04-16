@@ -4,7 +4,6 @@ import { CANVAS_H, CANVAS_W, GRID, rows, cols } from "./Util/constant";
 import { drawCircleCross } from "./Util/drawings";
 
 // t: 0 = 아무것도 없음, 1 = 완전히 자란 상태
-// imageRects: 나무가 침범하면 안 되는 모든 이미지 영역
 export function drawTree(
   p: p5,
   pos: Pos,
@@ -16,19 +15,8 @@ export function drawTree(
 ) {
   p.push();
   p.noFill();
-  branch(
-    p,
-    pos,
-    angle,
-    params.len,
-    params.depth,
-    params,
-    occupied,
-    treeOccupied,
-    t,
-    0,
-    3
-  );
+
+  branch(p, pos, angle, params.len, params.depth, params, occupied, treeOccupied, t, 0, 3);
   p.pop();
 }
 
@@ -47,11 +35,6 @@ function branch(
 ) {
   // 캔버스 밖이면 그냥 멈춤
   if (pos.x < 0 || pos.x > CANVAS_W || pos.y < 0 || pos.y > CANVAS_H) return;
-
-  if (currentDepth >= maxDepth || len < 2) {
-    drawCircleCross(p, pos.x, pos.y);
-    return;
-  }
 
   const r = Math.floor(pos.y / GRID);
   const c = Math.floor(pos.x / GRID);
@@ -96,18 +79,12 @@ function branch(
     return;
   }
 
-  if (localT <= 0) {
-    drawCircleCross(p, pos.x, pos.y);
-    return;
-  }
-
   // 끝점을 그리드에 스냅
   const x2 = Math.round((pos.x + Math.cos(angle) * actualLen) / GRID) * GRID;
   const y2 = Math.round((pos.y + Math.sin(angle) * actualLen) / GRID) * GRID;
   const steps = Math.ceil(actualLen / GRID);
 
-  if (isTreeOccupied(steps, actualLen, pos.x, pos.y, x2, y2, treeOccupied))
-    return;
+  if (isTreeOccupied(steps, actualLen, pos.x, pos.y, x2, y2, treeOccupied)) return;
   drawLine(p, params, pos.x, pos.y, x2, y2);
   setTreeOccupied(steps, actualLen, pos.x, pos.y, x2, y2, treeOccupied);
 
@@ -141,14 +118,7 @@ function branch(
   }
 }
 
-function drawLine(
-  p: p5,
-  params: TreeParams,
-  x: number,
-  y: number,
-  x2: number,
-  y2: number
-) {
+function drawLine(p: p5, params: TreeParams, x: number, y: number, x2: number, y2: number) {
   p.stroke(params.color[0], params.color[1], params.color[2]);
   p.strokeWeight(1);
   p.line(x, y, x2, y2);
