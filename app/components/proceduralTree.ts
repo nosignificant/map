@@ -1,17 +1,13 @@
 import type p5 from "p5";
-import { CANVAS_H, CANVAS_W, GRID, TreeParams } from "./Util/types";
-import { act } from "react";
+import { TreeParams, Pos } from "./Util/types";
+import { CANVAS_H, CANVAS_W, GRID, rows, cols } from "./Util/constant";
 import { drawCircleCross } from "./Util/drawings";
-
-const rows = CANVAS_H / GRID;
-const cols = CANVAS_W / GRID;
 
 // t: 0 = 아무것도 없음, 1 = 완전히 자란 상태
 // imageRects: 나무가 침범하면 안 되는 모든 이미지 영역
 export function drawTree(
   p: p5,
-  x: number,
-  y: number,
+  pos: Pos,
   angle: number,
   params: TreeParams,
   occupied: boolean[][],
@@ -21,14 +17,26 @@ export function drawTree(
 ) {
   p.push();
   p.noFill();
-  branch(p, x, y, angle, params.len, params.depth, params, occupied, treeOccupied, riverOccupied, t, 0, 3);
+  branch(
+    p,
+    pos,
+    angle,
+    params.len,
+    params.depth,
+    params,
+    occupied,
+    treeOccupied,
+    riverOccupied,
+    t,
+    0,
+    3
+  );
   p.pop();
 }
 
 function branch(
   p: p5,
-  x: number,
-  y: number,
+  pos: Pos,
   angle: number,
   len: number,
   maxDepth: number,
@@ -41,15 +49,15 @@ function branch(
   reversed: number
 ) {
   // 캔버스 밖이면 그냥 멈춤
-  if (x < 0 || x > CANVAS_W || y < 0 || y > CANVAS_H) return;
+  if (pos.x < 0 || pos.x > CANVAS_W || pos.y < 0 || pos.y > CANVAS_H) return;
 
   if (currentDepth >= maxDepth || len < 2) {
-    drawCircleCross(p, x, y);
+    drawCircleCross(p, pos.x, pos.y);
     return;
   }
 
-  const r = Math.floor(y / GRID);
-  const c = Math.floor(x / GRID);
+  const r = Math.floor(pos.y / GRID);
+  const c = Math.floor(pos.x / GRID);
 
   const depthProgress = t * maxDepth;
   const localT = Math.min(1, depthProgress - currentDepth);
@@ -57,30 +65,64 @@ function branch(
 
   if (occupied[r]?.[c]) {
     if (reversed > 0) {
-      branch(p, x, y, angle + Math.PI, len, maxDepth, params, occupied, treeOccupied, riverOccupied, t, currentDepth, reversed - 1);
+      branch(
+        p,
+        pos,
+        angle + Math.PI,
+        len,
+        maxDepth,
+        params,
+        occupied,
+        treeOccupied,
+        riverOccupied,
+        t,
+        currentDepth,
+        reversed - 1
+      );
     } else {
-      const nextX = x + Math.cos(angle + Math.PI) * actualLen;
-      const nextY = y + Math.sin(angle + Math.PI) * actualLen;
-      drawLine(p, params, x, y, nextX, nextY);
-      branch(p, nextX, nextY, angle + Math.PI, len, maxDepth, params, occupied, treeOccupied, riverOccupied, t, currentDepth + 1, 0);
+      const nextX = pos.x + Math.cos(angle + Math.PI) * actualLen;
+      const nextY = pos.y + Math.sin(angle + Math.PI) * actualLen;
+      drawLine(p, params, pos.x, pos.y, nextX, nextY);
+      branch(
+        p,
+        { x: nextX, y: nextY },
+        angle + Math.PI,
+        len,
+        maxDepth,
+        params,
+        occupied,
+        treeOccupied,
+        riverOccupied,
+        t,
+        currentDepth + 1,
+        0
+      );
     }
     return;
   }
 
   if (localT <= 0) {
-    drawCircleCross(p, x, y);
+    drawCircleCross(p, pos.x, pos.y);
     return;
   }
 
-  const x2 = x + Math.cos(angle) * actualLen;
-  const y2 = y + Math.sin(angle) * actualLen;
+  const x2 = pos.x + Math.cos(angle) * actualLen;
+  const y2 = pos.y + Math.sin(angle) * actualLen;
   const steps = Math.ceil(actualLen / GRID);
 
   // river 셀에 막히면 그 직전까지 그리고 수직으로 우회
-  const riverHit = findRiverHit(steps, x, y, x2, y2, riverOccupied);
+  const riverHit = findRiverHit(steps, pos.x, pos.y, x2, y2, riverOccupied);
   if (riverHit) {
-    drawLine(p, params, x, y, riverHit.x, riverHit.y);
-    setTreeOccupied(Math.ceil(riverHit.dist / GRID), riverHit.dist, x, y, riverHit.x, riverHit.y, treeOccupied);
+    drawLine(p, params, pos.x, pos.y, riverHit.x, riverHit.y);
+    setTreeOccupied(
+      Math.ceil(riverHit.dist / GRID),
+      riverHit.dist,
+      pos.x,
+      pos.y,
+      riverHit.x,
+      riverHit.y,
+      treeOccupied
+    );
 
     // 수직 방향(±90°) 중 비어있는 쪽으로 우회
     const redirectLen = GRID * 3;
@@ -89,22 +131,66 @@ function branch(
       const ry = riverHit.y + Math.sin(angle + da) * redirectLen;
       const rr = Math.floor(ry / GRID);
       const rc = Math.floor(rx / GRID);
-      if (!riverOccupied[rr]?.[rc] && !treeOccupied[rr]?.[rc] && !occupied[rr]?.[rc]) {
+      if (
+        !riverOccupied[rr]?.[rc] &&
+        !treeOccupied[rr]?.[rc] &&
+        !occupied[rr]?.[rc]
+      ) {
         drawLine(p, params, riverHit.x, riverHit.y, rx, ry);
-        branch(p, rx, ry, angle, len * 0.9, maxDepth, params, occupied, treeOccupied, riverOccupied, t, currentDepth + 1, reversed);
+        branch(
+          p,
+          { x: rx, y: ry },
+          angle,
+          len * 0.9,
+          maxDepth,
+          params,
+          occupied,
+          treeOccupied,
+          riverOccupied,
+          t,
+          currentDepth + 1,
+          reversed
+        );
         break;
       }
     }
     return;
   }
 
-  if (isTreeOccupied(steps, actualLen, x, y, x2, y2, treeOccupied)) return;
-  drawLine(p, params, x, y, x2, y2);
-  setTreeOccupied(steps, actualLen, x, y, x2, y2, treeOccupied);
+  if (isTreeOccupied(steps, actualLen, pos.x, pos.y, x2, y2, treeOccupied))
+    return;
+  drawLine(p, params, pos.x, pos.y, x2, y2);
+  setTreeOccupied(steps, actualLen, pos.x, pos.y, x2, y2, treeOccupied);
 
   if (localT >= 1) {
-    branch(p, x2, y2, angle - params.spread, len * 0.9, maxDepth, params, occupied, treeOccupied, riverOccupied, t, currentDepth + 1, reversed);
-    branch(p, x2, y2, angle + params.spread, len * 0.9, maxDepth, params, occupied, treeOccupied, riverOccupied, t, currentDepth + 1, reversed);
+    branch(
+      p,
+      { x: x2, y: y2 },
+      angle - params.spread,
+      len * 0.9,
+      maxDepth,
+      params,
+      occupied,
+      treeOccupied,
+      riverOccupied,
+      t,
+      currentDepth + 1,
+      reversed
+    );
+    branch(
+      p,
+      { x: x2, y: y2 },
+      angle + params.spread,
+      len * 0.9,
+      maxDepth,
+      params,
+      occupied,
+      treeOccupied,
+      riverOccupied,
+      t,
+      currentDepth + 1,
+      reversed
+    );
   }
 }
 
@@ -114,19 +200,20 @@ function drawLine(
   x: number,
   y: number,
   x2: number,
-  y2: number,) {
-
+  y2: number
+) {
   p.stroke(params.color[0], params.color[1], params.color[2]);
   p.strokeWeight(1);
   p.line(x, y, x2, y2);
-
 }
 
 // 경로 위에서 riverOccupied 셀에 처음 닿는 직전 지점 반환
 function findRiverHit(
   steps: number,
-  x: number, y: number,
-  x2: number, y2: number,
+  x: number,
+  y: number,
+  x2: number,
+  y2: number,
   riverOccupied: boolean[][]
 ): { x: number; y: number; dist: number } | null {
   for (let i = 1; i <= steps; i++) {
@@ -153,7 +240,8 @@ function isTreeOccupied(
   y: number,
   x2: number,
   y2: number,
-  treeOccupied: boolean[][]): boolean {
+  treeOccupied: boolean[][]
+): boolean {
   for (let i = 1; i <= steps; i++) {
     const tx = x + (x2 - x) * (i / steps);
     const ty = y + (y2 - y) * (i / steps);
@@ -171,7 +259,8 @@ function setTreeOccupied(
   y: number,
   x2: number,
   y2: number,
-  treeOccupied: boolean[][]) {
+  treeOccupied: boolean[][]
+) {
   for (let i = 0; i <= steps; i++) {
     const tx = x + (x2 - x) * (i / steps);
     const ty = y + (y2 - y) * (i / steps);

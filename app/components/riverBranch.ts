@@ -1,5 +1,6 @@
 import type p5 from "p5";
-import { GRID, CANVAS_W, CANVAS_H, Pos, Grid } from "./Util/types";
+import { Pos, Grid } from "./Util/types";
+import { GRID, CANVAS_W, CANVAS_H } from "./Util/constant";
 
 const ROWS = CANVAS_H / GRID;
 const COLS = CANVAS_W / GRID;
@@ -7,7 +8,6 @@ const MAX_NODES = 20;
 const BRANCH_CHANCE = 0.25;
 
 // ── 그리드 노드 ───────────────────────────────────────────────────────────
-
 
 function getCenter(node: Grid): Pos {
   return {
@@ -19,16 +19,26 @@ function getCenter(node: Grid): Pos {
 // 8방향 이웃
 function getNeighbors(node: Grid): Grid[] {
   const { ci, ri } = node;
-  return [
+  const straight = [
     { ci: ci + 1, ri },
     { ci: ci - 1, ri },
     { ci, ri: ri + 1 },
     { ci, ri: ri - 1 },
+  ];
+  const diagonal = [
     { ci: ci + 1, ri: ri + 1 },
     { ci: ci - 1, ri: ri - 1 },
     { ci: ci + 1, ri: ri - 1 },
     { ci: ci - 1, ri: ri + 1 },
-  ].filter((n) => n.ci >= 0 && n.ci < COLS && n.ri >= 0 && n.ri < ROWS);
+  ];
+
+  const result = [...straight];
+  for (const d of diagonal) {
+    if (Math.random() < 0.15) result.push(d); // 15% 확률로만 포함
+  }
+  return result.filter(
+    (n) => n.ci >= 0 && n.ci < COLS && n.ri >= 0 && n.ri < ROWS
+  );
 }
 
 function nodeKey(node: Grid) {
@@ -58,14 +68,14 @@ export function buildRiverPath(
 
   //스택 안에 뭐가 있고 다녀간 곳 길이가 최대 노드 이하일때
   while (stack.length > 0 && path.length < MAX_NODES * 2) {
-    
-    //스택에서 하나 꺼냄 
+    //스택에서 하나 꺼냄
     const { node, parentPos } = stack.pop()!;
-    
-    //그리드 상 위치 - visited 에 있는지 확인 
+
+    //그리드 상 위치 - visited 에 있는지 확인
     const key = nodeKey(node);
     if (visited.has(key)) continue;
 
+    //이미지가 차지한 곳이면 건너 뜀
     const { x, y } = getCenter(node);
     const r = Math.floor(y / GRID);
     const c = Math.floor(x / GRID);
@@ -74,7 +84,10 @@ export function buildRiverPath(
     visited.add(key);
     path.push(parentPos, { x, y });
 
-    const neighbors = getNeighbors(node).filter((n) => !visited.has(nodeKey(n)));
+    //마지막으로 간 곳의 8방향
+    const neighbors = getNeighbors(node).filter(
+      (n) => !visited.has(nodeKey(n))
+    );
     shuffle(neighbors);
 
     if (neighbors.length > 0) {
@@ -92,20 +105,20 @@ export function buildRiverPath(
 
 export function drawRiverPath(
   p: p5,
-  path: Pos[],
+  pos: Pos[],
   treeOccupied: boolean[][],
   riverOccupied: boolean[][],
   t: number
 ) {
-  const drawCount = Math.floor(t * (path.length / 2)) * 2;
+  const drawCount = Math.floor(t * (pos.length / 2)) * 2;
 
   p.stroke(40);
   p.strokeWeight(1);
   p.noFill();
 
   for (let i = 0; i < drawCount; i += 2) {
-    const from = path[i];
-    const to = path[i + 1];
+    const from = pos[i];
+    const to = pos[i + 1];
     if (!from || !to) break;
 
     const r = Math.floor(to.y / GRID);

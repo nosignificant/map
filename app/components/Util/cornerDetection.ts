@@ -1,4 +1,5 @@
 import { Corner } from "./types";
+import { GRID } from "./constant";
 
 const CLUSTER_RADIUS = 3; // 이 반경 안에 다른 코너 있으면 클러스터로 간주
 
@@ -37,7 +38,7 @@ export function findSimpleCorners(offsetMap: boolean[][]): Corner[] {
       const angle = getCornerAngle(hasUp, hasDown, hasLeft, hasRight);
       if (angle === null) continue;
 
-      candidates.push({ grid: { ri, ci }, angle });
+      candidates.push({ pos: { x: ci * GRID, y: ri * GRID }, angle });
     }
   }
 
@@ -45,8 +46,8 @@ export function findSimpleCorners(offsetMap: boolean[][]): Corner[] {
     const hasNearby = candidates.some((other) => {
       if (other === c) return false;
       const dist =
-        Math.abs(other.grid.ri - c.grid.ri) +
-        Math.abs(other.grid.ci - c.grid.ci);
+        Math.abs(other.pos.y / GRID - c.pos.y / GRID) +
+        Math.abs(other.pos.x / GRID - c.pos.x / GRID);
       return dist <= CLUSTER_RADIUS;
     });
     return !hasNearby; // 근처에 없는 것 = 단순 코너만 통과

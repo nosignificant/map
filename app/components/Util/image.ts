@@ -1,15 +1,20 @@
 import type p5 from "p5";
 import { buildEdgeMap } from "./edgeDetection";
-import { ImgSet, GRID, rows, cols } from "./types";
+import { ImgSet } from "./types";
+import { GRID, rows, cols } from "./constant";
 import { findSimpleCorners } from "./cornerDetection";
-
 
 export function MakeimgEdge(p: p5, images: p5.Image[]): ImgSet[] {
   const result: ImgSet[] = [];
 
   images.forEach((img) => {
     const edge = buildEdgeMap(p, img);
-    result.push({ img: img, edgeResult: edge, placements: [], corners: findSimpleCorners(edge.offsetMap) });
+    result.push({
+      img: img,
+      edgeResult: edge,
+      placements: [],
+      corners: findSimpleCorners(edge.offsetMap),
+    });
   });
 
   return result;
@@ -36,7 +41,8 @@ export function drawAllOccupied(set: ImgSet[]): boolean[][] {
         for (let ci = 0; ci < imgCols; ci++) {
           const outRow = startRow + ri;
           const outCol = startCol + ci;
-          if (outRow < 0 || outRow >= rows || outCol < 0 || outCol >= cols) continue;
+          if (outRow < 0 || outRow >= rows || outCol < 0 || outCol >= cols)
+            continue;
           out[outRow][outCol] ||= img.edgeResult.drawnPixel[ri][ci];
         }
       }
@@ -45,4 +51,3 @@ export function drawAllOccupied(set: ImgSet[]): boolean[][] {
 
   return out;
 }
-

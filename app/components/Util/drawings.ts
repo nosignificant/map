@@ -1,5 +1,6 @@
 import type p5 from "p5";
-import { ImgSet, GRID, CANVAS_H, CANVAS_W } from "./types";
+import { ImgSet } from "./types";
+import { GRID, CANVAS_W, CANVAS_H } from "./constant";
 
 export function drawOutline(p: p5, set: ImgSet[], occupied: boolean[][]) {
   p.fill(0);
@@ -19,7 +20,7 @@ export function drawOutline(p: p5, set: ImgSet[], occupied: boolean[][]) {
           const outRow = Math.floor(cellY / GRID);
           const outCol = Math.floor(cellX / GRID);
           if (occupied[outRow]?.[outCol]) continue;
-          drawCircleCross(p, cellX, cellY);
+          //drawCircleCross(p, cellX, cellY);
         }
       }
     }
@@ -46,6 +47,8 @@ export function backGrid(p: p5) {
     const y = spacingH * i + spacingH;
 
     p.strokeWeight(1);
+    p.stroke(0, 0, 255);
+
     p.line(x, 0, x, CANVAS_H);
     p.line(0, y, CANVAS_W, y);
   }
@@ -56,4 +59,11 @@ export function drawCircleCross(p: p5, x: number, y: number) {
   p.stroke(0);
   p.strokeWeight(1);
   p.circle(x + GRID / 2, y + GRID / 2, GRID);
+}
+export function backGroundSetup(p: p5) {
+  p.fill(255, 255, 255);
+  p.stroke(0);
+  p.strokeWeight(2);
+  p.rect(0, 0, CANVAS_W, CANVAS_H);
+  backGrid(p);
 }

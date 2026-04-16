@@ -1,22 +1,41 @@
 import type p5 from "p5";
-import { GRID, THRESHOLD, DISPLAY_SIZE, EdgeResult } from "./types";
+import { EdgeResult } from "./types";
+import { GRID, THRESHOLD, DISPLAY_SIZE } from "./constant";
 
 // 엣지맵 팽창 → 끊긴 틈 메우기
-export function dilate(src: boolean[][], rows: number, cols: number): boolean[][] {
+export function dilate(
+  src: boolean[][],
+  rows: number,
+  cols: number
+): boolean[][] {
   const out = Array.from({ length: rows }, () => new Array(cols).fill(false));
-  const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [-1, 1], [1, -1], [1, 1]];
+  const dirs = [
+    [-1, 0],
+    [1, 0],
+    [0, -1],
+    [0, 1],
+    [-1, -1],
+    [-1, 1],
+    [1, -1],
+    [1, 1],
+  ];
 
   for (let ri = 0; ri < rows; ri++) {
     for (let ci = 0; ci < cols; ci++) {
-      //이미 채워져있으면 건너뛰기 
-      if (src[ri][ci]) { out[ri][ci] = true; continue; }
+      //이미 채워져있으면 건너뛰기
+      if (src[ri][ci]) {
+        out[ri][ci] = true;
+        continue;
+      }
 
       //ri, ci에 대해 모든 방향 검사
       for (const [dr, dc] of dirs) {
-        const nr = ri + dr, nc = ci + dc;
-        //검사 결과가 그리드 안에 있으면 
+        const nr = ri + dr,
+          nc = ci + dc;
+        //검사 결과가 그리드 안에 있으면
         if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && src[nr][nc]) {
-          out[ri][ci] = true; break;
+          out[ri][ci] = true;
+          break;
         }
       }
     }
@@ -32,7 +51,9 @@ export function computeOffsetMap(
   rows: number,
   cols: number
 ): boolean[][] {
-  const out = Array.from({ length: rows + 2 }, () => new Array(cols + 2).fill(false));
+  const out = Array.from({ length: rows + 2 }, () =>
+    new Array(cols + 2).fill(false)
+  );
 
   for (let ri = 0; ri < rows; ri++) {
     for (let ci = 0; ci < cols; ci++) {
@@ -54,7 +75,9 @@ export function buildEdgeMap(p: p5, image: p5.Image): EdgeResult {
 
   const cols = Math.ceil(iw / GRID);
   const rows = Math.ceil(ih / GRID);
-  const drawnPixel: boolean[][] = Array.from({ length: rows }, () => new Array(cols).fill(false));;
+  const drawnPixel: boolean[][] = Array.from({ length: rows }, () =>
+    new Array(cols).fill(false)
+  );
 
   for (let ri = 0; ri < rows; ri++) {
     for (let ci = 0; ci < cols; ci++) {
@@ -71,7 +94,8 @@ export function buildEdgeMap(p: p5, image: p5.Image): EdgeResult {
 
           sumAlpha += g.pixels[idx + 3];
 
-          if (sumAlpha > THRESHOLD) {  // 임계값 이상이면 있다고 침
+          if (sumAlpha > THRESHOLD) {
+            // 임계값 이상이면 있다고 침
             drawnPixel[ri][ci] = true;
           }
         }
@@ -84,5 +108,5 @@ export function buildEdgeMap(p: p5, image: p5.Image): EdgeResult {
   const closedEdge = dilate(drawnPixel, rows, cols);
   const offsetMap = computeOffsetMap(closedEdge, drawnPixel, rows, cols);
 
-  return { drawnPixel, offsetMap, rows, cols };
+  return { drawnPixel, offsetMap, grid: { ci: rows, ri: cols } };
 }

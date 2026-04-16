@@ -1,32 +1,24 @@
 // 유니티 MonoBehaviour 역할 — setup(), draw(), 이벤트
 import type p5 from "p5";
+import { ImgSet, PlacedImage } from "./Util/types";
 import { getImg, MakeimgEdge, drawAllOccupied } from "./Util/image";
-import { drawOutline, backGrid } from "./Util/drawings";
+import { drawOutline, backGroundSetup } from "./Util/drawings";
 import {
   buildRiverPath,
   drawRiverPath,
   markRiverOccupied,
 } from "./riverBranch";
+import { drawTree } from "./proceduralTree";
 import {
   GRID,
   DISPLAY_SIZE,
   CANVAS_W,
   CANVAS_H,
-  ImgSet,
-  PlacedImage,
-} from "./Util/types";
-import { drawTree } from "./proceduralTree";
-import { DEFAULT_TREE } from "./Util/treeTypes";
+  DEFAULT_TREE,
+  screenCorners,
+} from "./Util/constant";
 
 const GROW_SPEED = 0.009;
-
-type Corner2D = { x: number; y: number; angle: number };
-const screenCorners: Corner2D[] = [
-  { x: 0, y: 0, angle: Math.PI / 4 }, // 왼쪽 위  → 오른쪽 아래
-  { x: CANVAS_W - 1, y: 0, angle: (3 * Math.PI) / 4 }, // 오른쪽 위 → 왼쪽 아래
-  { x: 0, y: CANVAS_H - 1, angle: -Math.PI / 4 }, // 왼쪽 아래 → 오른쪽 위
-  { x: CANVAS_W - 1, y: CANVAS_H - 1, angle: (-3 * Math.PI) / 4 }, // 오른쪽 아래 → 왼쪽 위
-];
 
 export function createSketch(container: HTMLElement) {
   return (p: p5) => {
@@ -85,11 +77,8 @@ export function createSketch(container: HTMLElement) {
         riverOccupied[r].fill(false);
 
       // ── 레이어 1: 배경
-      p.fill(255, 255, 255);
-      p.stroke(0);
-      p.strokeWeight(2);
-      p.rect(0, 0, CANVAS_W, CANVAS_H);
-      backGrid(p);
+      backGroundSetup(p);
+
       // riverOccupied 미리 채우기 (그리기 전에)
       for (const img of set) {
         for (const pl of img.placements) {
@@ -101,7 +90,7 @@ export function createSketch(container: HTMLElement) {
 
       // ── 레이어 2: river 흰 네모 (제일 아래)
       p.noStroke();
-      p.fill(255);
+      p.fill(0, 0, 255);
       for (let r = 0; r < riverOccupied.length; r++) {
         for (let c = 0; c < riverOccupied[r].length; c++) {
           if (riverOccupied[r][c]) {
@@ -126,8 +115,7 @@ export function createSketch(container: HTMLElement) {
       for (const corner of screenCorners) {
         drawTree(
           p,
-          corner.x,
-          corner.y,
+          corner.pos,
           corner.angle,
           DEFAULT_TREE,
           occupied,
