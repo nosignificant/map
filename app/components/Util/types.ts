@@ -11,10 +11,11 @@ export const rows = CANVAS_H / GRID;
 export const cols = CANVAS_W / GRID;
 
 export type Pos = { x: number; y: number };
+export type Grid = { ci: number; ri: number };
+
 
 export type PlacedImage = {
-  x: number;
-  y: number;
+pos: Pos;
   growthT: number;
   riverPaths: Pos[][];
 };
@@ -22,8 +23,7 @@ export type PlacedImage = {
 export type EdgeResult = {
   drawnPixel: boolean[][];
   offsetMap: boolean[][];
-  rows: number;
-  cols: number;
+grid: Grid;
 };
 
 export type ImgSet = {
@@ -34,8 +34,7 @@ export type ImgSet = {
 }
 
 export type Corner = {
-  ri: number;   // 행 인덱스
-  ci: number;   // 열 인덱스
+grid: Grid;
   angle: number; // 대각선 방향 (라디안)
 };
 

@@ -1,5 +1,5 @@
 import type p5 from "p5";
-import { GRID, CANVAS_W, CANVAS_H, Pos } from "./Util/types";
+import { GRID, CANVAS_W, CANVAS_H, Pos, Grid } from "./Util/types";
 
 const ROWS = CANVAS_H / GRID;
 const COLS = CANVAS_W / GRID;
@@ -8,9 +8,8 @@ const BRANCH_CHANCE = 0.25;
 
 // ── 그리드 노드 ───────────────────────────────────────────────────────────
 
-type GridNode = { ci: number; ri: number };
 
-function getCenter(node: GridNode): Pos {
+function getCenter(node: Grid): Pos {
   return {
     x: node.ci * GRID + GRID / 2,
     y: node.ri * GRID + GRID / 2,
@@ -18,7 +17,7 @@ function getCenter(node: GridNode): Pos {
 }
 
 // 8방향 이웃
-function getNeighbors(node: GridNode): GridNode[] {
+function getNeighbors(node: Grid): Grid[] {
   const { ci, ri } = node;
   return [
     { ci: ci + 1, ri },
@@ -32,7 +31,7 @@ function getNeighbors(node: GridNode): GridNode[] {
   ].filter((n) => n.ci >= 0 && n.ci < COLS && n.ri >= 0 && n.ri < ROWS);
 }
 
-function nodeKey(node: GridNode) {
+function nodeKey(node: Grid) {
   return `${node.ci},${node.ri}`;
 }
 
@@ -46,10 +45,11 @@ export function buildRiverPath(
   const startCi = Math.floor(startX / GRID);
   const startRi = Math.floor(startY / GRID);
 
+  //다녀간 곳들 목록
   const path: Pos[] = [];
   const visited = new Set<string>();
 
-  const stack: { node: GridNode; parentPos: Pos }[] = [
+  const stack: { node: Grid; parentPos: Pos }[] = [
     {
       node: { ci: startCi, ri: startRi },
       parentPos: { x: startX, y: startY },
@@ -59,7 +59,7 @@ export function buildRiverPath(
   //스택 안에 뭐가 있고 다녀간 곳 길이가 최대 노드 이하일때
   while (stack.length > 0 && path.length < MAX_NODES * 2) {
     
-    //그리드 상 위치랑 픽셀 위치 꺼냄 
+    //스택에서 하나 꺼냄 
     const { node, parentPos } = stack.pop()!;
     
     //그리드 상 위치 - visited 에 있는지 확인 

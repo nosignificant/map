@@ -29,8 +29,8 @@ export function drawAllOccupied(set: ImgSet[]): boolean[][] {
 
     for (const pl of img.placements) {
       // 픽셀 좌표 → 그리드 인덱스
-      const startRow = Math.floor(pl.y / GRID);
-      const startCol = Math.floor(pl.x / GRID);
+      const startRow = Math.floor(pl.pos.y / GRID);
+      const startCol = Math.floor(pl.pos.x / GRID);
 
       for (let ri = 0; ri < imgRows; ri++) {
         for (let ci = 0; ci < imgCols; ci++) {
