@@ -84,6 +84,12 @@ export function createSketch(container: HTMLElement) {
       for (let r = 0; r < riverOccupied.length; r++)
         riverOccupied[r].fill(false);
 
+      // ── 레이어 1: 배경
+      p.fill(255, 255, 255);
+      p.stroke(0);
+      p.strokeWeight(2);
+      p.rect(0, 0, CANVAS_W, CANVAS_H);
+      backGrid(p);
       // riverOccupied 미리 채우기 (그리기 전에)
       for (const img of set) {
         for (const pl of img.placements) {
@@ -92,12 +98,6 @@ export function createSketch(container: HTMLElement) {
           }
         }
       }
-
-      // ── 레이어 1: 배경
-      p.fill(20, 20, 255);
-      p.stroke(0);
-      p.strokeWeight(2);
-      p.rect(0, 0, CANVAS_W, CANVAS_H);
 
       // ── 레이어 2: river 흰 네모 (제일 아래)
       p.noStroke();
@@ -136,7 +136,6 @@ export function createSketch(container: HTMLElement) {
           riverOccupied
         );
       }
-      backGrid(p);
     }
 
     // ── p.draw ───────────────────────────────────────────────────────────

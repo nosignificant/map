@@ -28,21 +28,25 @@ export function findSimpleCorners(offsetMap: boolean[][]): Corner[] {
       if (!isCorner) continue;
 
       // T자/십자(방향이 3개 이상)는 단순 코너가 아니므로 제외
-      const dirCount = [hasUp, hasDown, hasLeft, hasRight].filter(Boolean).length;
+      const dirCount = [hasUp, hasDown, hasLeft, hasRight].filter(
+        Boolean
+      ).length;
       if (dirCount > 2) continue;
 
       // 대각선 방향 결정 (코너가 향하는 바깥쪽)
       const angle = getCornerAngle(hasUp, hasDown, hasLeft, hasRight);
       if (angle === null) continue;
 
-      candidates.push({ ri, ci, angle });
+      candidates.push({ grid: { ri, ci }, angle });
     }
   }
 
   return candidates.filter((c) => {
     const hasNearby = candidates.some((other) => {
       if (other === c) return false;
-      const dist = Math.abs(other.ri - c.ri) + Math.abs(other.ci - c.ci);
+      const dist =
+        Math.abs(other.grid.ri - c.grid.ri) +
+        Math.abs(other.grid.ci - c.grid.ci);
       return dist <= CLUSTER_RADIUS;
     });
     return !hasNearby; // 근처에 없는 것 = 단순 코너만 통과
@@ -64,9 +68,9 @@ function getCornerAngle(
 ): number | null {
   // 테두리가 위+왼쪽에 있다 = 이 셀은 이미지 바깥쪽 오른쪽아래 코너
   // → 나무는 반대 방향(↘)으로 자라야 함
-  if (hasUp && hasLeft) return Math.PI / 4;          // ↘
-  if (hasUp && hasRight) return (3 * Math.PI) / 4;    // ↙
-  if (hasDown && hasLeft) return -Math.PI / 4;          // ↗
-  if (hasDown && hasRight) return (-3 * Math.PI) / 4;   // ↖
+  if (hasUp && hasLeft) return Math.PI / 4; // ↘
+  if (hasUp && hasRight) return (3 * Math.PI) / 4; // ↙
+  if (hasDown && hasLeft) return -Math.PI / 4; // ↗
+  if (hasDown && hasRight) return (-3 * Math.PI) / 4; // ↖
   return null;
 }

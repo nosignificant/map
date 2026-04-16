@@ -25,6 +25,16 @@ export function drawOutline(p: p5, set: ImgSet[], occupied: boolean[][]) {
     }
   }
 }
+export function drawBackCircle(p: p5) {
+  for (let r = 0; r < CANVAS_H; r++) {
+    for (let c = 0; c < CANVAS_H; c++) {
+      const x = GRID * r + GRID;
+      const y = GRID * c + GRID;
+
+      p.circle(x, y, GRID);
+    }
+  }
+}
 
 export function backGrid(p: p5) {
   const split = 5;
@@ -35,7 +45,9 @@ export function backGrid(p: p5) {
     const x = spacingW * i + spacingW;
     const y = spacingH * i + spacingH;
 
-    p.line(x, 0, x, CANVAS_W);
+    p.strokeWeight(1);
+    p.line(x, 0, x, CANVAS_H);
+    p.line(0, y, CANVAS_W, y);
   }
 }
 
