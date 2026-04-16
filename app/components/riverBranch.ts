@@ -11,8 +11,8 @@ const BRANCH_CHANCE = 0.25;
 
 function getCenter(node: Grid): Pos {
   return {
-    x: node.ci * GRID + GRID / 2,
-    y: node.ri * GRID + GRID / 2,
+    x: node.ci * GRID,
+    y: node.ri * GRID,
   };
 }
 

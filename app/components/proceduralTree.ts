@@ -106,8 +106,9 @@ function branch(
     return;
   }
 
-  const x2 = pos.x + Math.cos(angle) * actualLen;
-  const y2 = pos.y + Math.sin(angle) * actualLen;
+  // 끝점을 그리드에 스냅
+  const x2 = Math.round((pos.x + Math.cos(angle) * actualLen) / GRID) * GRID;
+  const y2 = Math.round((pos.y + Math.sin(angle) * actualLen) / GRID) * GRID;
   const steps = Math.ceil(actualLen / GRID);
 
   // river 셀에 막히면 그 직전까지 그리고 수직으로 우회

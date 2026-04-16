@@ -3,11 +3,9 @@ import { EdgeResult } from "./types";
 import { GRID, THRESHOLD, DISPLAY_SIZE } from "./constant";
 
 // 엣지맵 팽창 → 끊긴 틈 메우기
-export function dilate(
-  src: boolean[][],
-  rows: number,
-  cols: number
-): boolean[][] {
+export function dilate(src: boolean[][]): boolean[][] {
+  const rows = src.length;
+  const cols = src[0]?.length ?? 0;
   const out = Array.from({ length: rows }, () => new Array(cols).fill(false));
   const dirs = [
     [-1, 0],
@@ -47,10 +45,10 @@ export function dilate(
 // 출력은 (rows+2) × (cols+2) — 이미지 경계 바깥 1칸도 포함
 export function computeOffsetMap(
   dilateMap: boolean[][],
-  drawnMap: boolean[][],
-  rows: number,
-  cols: number
+  drawnMap: boolean[][]
 ): boolean[][] {
+  const rows = dilateMap.length;
+  const cols = dilateMap[0]?.length ?? 0;
   const out = Array.from({ length: rows + 2 }, () =>
     new Array(cols + 2).fill(false)
   );
@@ -105,8 +103,8 @@ export function buildEdgeMap(p: p5, image: p5.Image): EdgeResult {
 
   g.remove();
 
-  const closedEdge = dilate(drawnPixel, rows, cols);
-  const offsetMap = computeOffsetMap(closedEdge, drawnPixel, rows, cols);
+  const closedEdge = dilate(drawnPixel);
+  const offsetMap = computeOffsetMap(closedEdge, drawnPixel);
 
-  return { drawnPixel, offsetMap, grid: { ci: rows, ri: cols } };
+  return { drawnPixel, offsetMap, grid: { ri: rows, ci: cols } };
 }

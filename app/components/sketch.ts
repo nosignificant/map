@@ -90,7 +90,7 @@ export function createSketch(container: HTMLElement) {
 
       // ── 레이어 2: river 흰 네모 (제일 아래)
       p.noStroke();
-      p.fill(0, 0, 255);
+      p.fill(100, 150, 255);
       for (let r = 0; r < riverOccupied.length; r++) {
         for (let c = 0; c < riverOccupied[r].length; c++) {
           if (riverOccupied[r][c]) {
