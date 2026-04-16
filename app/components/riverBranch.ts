@@ -81,6 +81,9 @@ export function buildRiverPath(
     const c = Math.floor(x / GRID);
     if (occupied[r]?.[c]) continue;
 
+    ////
+    //위의 조건들 다 만족하면 추가
+    ////
     visited.add(key);
     path.push(parentPos, { x, y });
 
@@ -130,6 +133,18 @@ export function drawRiverPath(
     }
 
     p.line(from.x, from.y, to.x, to.y);
+  }
+}
+
+export function riverRect(p: p5, riverOccupied: boolean[][]) {
+  p.noStroke();
+  p.fill(100, 150, 255);
+  for (let r = 0; r < riverOccupied.length; r++) {
+    for (let c = 0; c < riverOccupied[r].length; c++) {
+      if (riverOccupied[r][c]) {
+        p.rect(c * GRID, r * GRID, GRID, GRID);
+      }
+    }
   }
 }
 

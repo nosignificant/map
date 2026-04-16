@@ -29,10 +29,10 @@ export function drawOutline(p: p5, set: ImgSet[], occupied: boolean[][]) {
 
 export function backGrid(p: p5) {
   const split = 5;
-  for (let i = 0; i < split; i++) {
-    const spacingH = CANVAS_H / split;
-    const spacingW = CANVAS_W / split;
 
+  const spacingH = CANVAS_H / split;
+  const spacingW = CANVAS_W / split;
+  for (let i = 0; i < split; i++) {
     const x = spacingW * i + spacingW;
     const y = spacingH * i + spacingH;
 
@@ -41,6 +41,14 @@ export function backGrid(p: p5) {
 
     p.line(x, 0, x, CANVAS_H);
     p.line(0, y, CANVAS_W, y);
+  }
+
+  for (let row = 0; row < split; row++) {
+    for (let col = 0; col < split; col++) {
+      const cx = spacingW * (col + 1);
+      const cy = spacingH * (row + 1);
+      p.circle(cx, cy, 5);
+    }
   }
 }
 
@@ -51,7 +59,7 @@ export function backMiniGrid(p: p5) {
       const y = ri * GRID;
 
       p.strokeWeight(0);
-      p.fill(0, 0, 0);
+      p.fill(100, 100, 100);
       p.circle(x, y, 2);
     }
   }

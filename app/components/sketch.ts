@@ -7,6 +7,7 @@ import {
   buildRiverPath,
   drawRiverPath,
   markRiverOccupied,
+  riverRect,
 } from "./riverBranch";
 import { drawTree } from "./proceduralTree";
 import {
@@ -89,22 +90,14 @@ export function createSketch(container: HTMLElement) {
       }
 
       // ── 레이어 2: river 흰 네모 (제일 아래)
-      p.noStroke();
-      p.fill(100, 150, 255);
-      for (let r = 0; r < riverOccupied.length; r++) {
-        for (let c = 0; c < riverOccupied[r].length; c++) {
-          if (riverOccupied[r][c]) {
-            p.rect(c * GRID, r * GRID, GRID, GRID);
-          }
-        }
-      }
+      riverRect(p, riverOccupied);
 
       // ── 레이어 3: 이미지 + river 선
       for (const img of set) {
         for (const pl of img.placements) {
           p.image(img.img, pl.pos.x, pl.pos.y, DISPLAY_SIZE, DISPLAY_SIZE);
           for (const path of pl.riverPaths) {
-            drawRiverPath(p, path, treeOccupied, riverOccupied, pl.growthT);
+            //drawRiverPath(p, path, treeOccupied, riverOccupied, pl.growthT);
           }
         }
       }
@@ -143,7 +136,6 @@ export function createSketch(container: HTMLElement) {
           }
         }
       }
-      if (!anyGrowing) p.noLoop();
       draw();
     };
 
