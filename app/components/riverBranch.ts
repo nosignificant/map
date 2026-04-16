@@ -1,6 +1,7 @@
 import type p5 from "p5";
 import { Pos, Grid } from "./Util/types";
 import { GRID, CANVAS_W, CANVAS_H } from "./Util/constant";
+import { dilate } from "./Util/edgeDetection";
 
 const ROWS = CANVAS_H / GRID;
 const COLS = CANVAS_W / GRID;
@@ -144,6 +145,29 @@ export function riverRect(p: p5, riverOccupied: boolean[][]) {
       if (riverOccupied[r][c]) {
         p.rect(c * GRID, r * GRID, GRID, GRID);
       }
+    }
+  }
+}
+
+export function offsetRiverRect(p: p5, riverOccupied: boolean[][]) {
+  const dil = dilate(riverOccupied);
+
+  p.stroke(255, 0, 0);
+  p.strokeWeight(1);
+  p.noFill();
+
+  for (let r = 0; r < dil.length; r++) {
+    for (let c = 0; c < dil[r].length; c++) {
+      if (!dil[r][c]) continue; // dil 셀만
+
+      const x = c * GRID;
+      const y = r * GRID;
+
+      // dil 바깥 면에 선
+      if (!dil[r - 1]?.[c]) p.line(x, y, x + GRID, y);
+      if (!dil[r + 1]?.[c]) p.line(x, y + GRID, x + GRID, y + GRID);
+      if (!dil[r]?.[c - 1]) p.line(x, y, x, y + GRID);
+      if (!dil[r]?.[c + 1]) p.line(x + GRID, y, x + GRID, y + GRID);
     }
   }
 }

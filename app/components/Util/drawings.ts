@@ -76,6 +76,4 @@ export function backGroundSetup(p: p5) {
   p.stroke(0);
   p.strokeWeight(2);
   p.rect(0, 0, CANVAS_W, CANVAS_H);
-  backGrid(p);
-  backMiniGrid(p);
 }

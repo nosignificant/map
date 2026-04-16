@@ -2,12 +2,18 @@
 import type p5 from "p5";
 import { ImgSet, PlacedImage } from "./Util/types";
 import { getImg, MakeimgEdge, drawAllOccupied } from "./Util/image";
-import { drawOutline, backGroundSetup } from "./Util/drawings";
+import {
+  drawOutline,
+  backGroundSetup,
+  backGrid,
+  backMiniGrid,
+} from "./Util/drawings";
 import {
   buildRiverPath,
   drawRiverPath,
   markRiverOccupied,
   riverRect,
+  offsetRiverRect,
 } from "./riverBranch";
 import { drawTree } from "./proceduralTree";
 import {
@@ -104,6 +110,7 @@ export function createSketch(container: HTMLElement) {
 
       // ── 레이어 4: 아웃라인 + 나무
       drawOutline(p, set, occupied);
+      offsetRiverRect(p, riverOccupied);
 
       for (const corner of screenCorners) {
         drawTree(
@@ -117,6 +124,8 @@ export function createSketch(container: HTMLElement) {
           riverOccupied
         );
       }
+      backGrid(p);
+      backMiniGrid(p);
     }
 
     // ── p.draw ───────────────────────────────────────────────────────────
