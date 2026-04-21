@@ -12,26 +12,24 @@ import { GRID, DISPLAY_SIZE, CANVAS_W, CANVAS_H, DEFAULT_TREE, RIVER_STEP } from
 const GROW_SPEED = 0.009;
 
 export function createSketch(container: HTMLElement) {
-  return (p: p5) => {
-    //아웃라인, 차지하는 픽셀 정보
-    let set: ImgSet[] = [];
+  let set: ImgSet[] = [];
 
-    //지금까지 저장된 모든 이미지
-    let occupied: boolean[][] = [];
+  //지금까지 저장된 모든 이미지
+  let occupied: boolean[][] = [];
 
-    // 나무 그린 영역
-    const treeOccupied: boolean[][] = Array.from({ length: CANVAS_H / GRID }, () =>
-      new Array(CANVAS_W / GRID).fill(false)
-    );
+  // 나무 그린 영역
+  const treeOccupied: boolean[][] = Array.from({ length: CANVAS_H / GRID }, () =>
+    new Array(CANVAS_W / GRID).fill(false)
+  );
 
-    // 강 그린 영역
-    const riverOccupied: boolean[][] = Array.from({ length: CANVAS_H / GRID }, () =>
-      new Array(CANVAS_W / GRID).fill(false)
-    );
+  // 강 그린 영역
+  const riverOccupied: boolean[][] = Array.from({ length: CANVAS_H / GRID }, () =>
+    new Array(CANVAS_W / GRID).fill(false)
+  );
 
-    // 코너 나무 성장 t
-    let cornerGrowthT = 0;
-
+  // 코너 나무 성장 t
+  let cornerGrowthT = 0;
+  const myP = (p: p5) => {
     fetch("/api/images")
       .then((res) => res.json())
       .then((urls: string[]) => {
@@ -52,7 +50,6 @@ export function createSketch(container: HTMLElement) {
         });
       });
 
-    // ── Start ────────────────────────────────────────────────────────────
     p.setup = () => {
       p.pixelDensity(1);
       p.createCanvas(CANVAS_W, CANVAS_H);
@@ -171,4 +168,5 @@ export function createSketch(container: HTMLElement) {
       }
     };
   };
+  return myP;
 }

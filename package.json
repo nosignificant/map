@@ -9,6 +9,7 @@
     "deploy": "next build && touch out/.nojekyll && git add -f out/ && git commit -m \"Deploy\" && git subtree push --prefix out origin gh-pages"
   },
   "dependencies": {
+    "flubber": "^0.4.2",
     "next": "16.2.1",
     "p5": "^2.2.3",
     "react": "19.2.4",
@@ -16,6 +17,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/flubber": "^0.4.0",
     "@types/node": "^20",
     "@types/p5": "^1.7.7",
     "@types/react": "^19",

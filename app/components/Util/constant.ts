@@ -1,10 +1,10 @@
 import { TreeParams, Corner } from "./types";
 
-export const GRID = 10;
+export const GRID = 40;
 export const THRESHOLD = 35;
 export const DISPLAY_SIZE = 200; //이미지 크기
-export const CANVAS_W = 1500;
-export const CANVAS_H = 1000;
+export const CANVAS_W = GRID * 30 + GRID;
+export const CANVAS_H = GRID * 30 + GRID;
 export const rows = CANVAS_H / GRID;
 export const cols = CANVAS_W / GRID;
 

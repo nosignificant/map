@@ -36,3 +36,19 @@ export type TreeParams = {
   color: [number, number, number];
   spread: number;
 };
+
+//svg morphing
+
+export type Sign = {
+  morphFn: MorphFn;
+  grow: number;
+  //cooldown은 숫자 입력한 거 다 까지면 shrink로 넘어감
+  cooldown: number;
+  maxCool: number;
+  shrink: number;
+  repeat: number;
+};
+export type MorphFn = (t: number) => [number, number][];
+
+// check pattern
+export type checkerGrid = { grid: Grid; pos: [number, number] };
