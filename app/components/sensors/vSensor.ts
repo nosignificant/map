@@ -1,6 +1,6 @@
 import type p5 from "p5";
 import { CheckerGrid, VSensor, CheckerDistStep, Connect } from "../Util/types";
-import { GRID } from "../Util/constant";
+import { GRID, TIME } from "../Util/constant";
 import { drawCircleCross, drawTwoCircle } from "../drawings/drawings";
 import { findPath } from "../Util/BFS";
 
@@ -18,7 +18,13 @@ export function initVSensor(checker: CheckerGrid[]): VSensor[] {
 
   for (const col of cols) {
     for (const row of rows) {
-      result.push({ checkerGrid: { grid: { ri: row.ri, ci: col.ci }, pos: [col.x, row.y] }, near: [], clickCount: 0, t: 60, connect: [] });
+      result.push({
+        checkerGrid: { grid: { ri: row.ri, ci: col.ci }, pos: [col.x, row.y] },
+        near: [],
+        clickCount: 0,
+        t: 60,
+        connect: [],
+      });
     }
   }
   return result;
@@ -33,7 +39,6 @@ export function updateVSensor(p: p5, src: VSensor[], checker: CheckerGrid[], t: 
       for (const n of c.near) {
         if (n.distStep === 1) drawCircleCross(p, n.checkerGrid.pos[0], n.checkerGrid.pos[1]);
         if (c.clickCount >= 2 && n.distStep === 2) drawTwoCircle(p, n.checkerGrid.pos[0], n.checkerGrid.pos[1], GRID);
-        drawConnections(p, c.connect, checker);
       }
       c.t -= t;
       c.clickCount = Math.floor(c.t / 60) + 1;
@@ -78,13 +83,13 @@ export function vSensored(p: p5, src: VSensor[]) {
   }
 }
 
-export function findOtherSensor(p: p5, me: VSensor, src: VSensor[]): Connect[] {
+export function findOtherSensor(p: p5, me: VSensor, src: VSensor[], checker: CheckerGrid[]): Connect[] {
   const connect: Connect[] = [];
-  const threshold = GRID * 10;
+  const threshold = GRID * 30;
   for (const other of src) {
     if (me === other) continue;
     const d = p.dist(me.checkerGrid.pos[0], me.checkerGrid.pos[1], other.checkerGrid.pos[0], other.checkerGrid.pos[1]);
-    const prob = Math.max(0, 1 - d / threshold) ** 0.5;
+    const prob = Math.max(0, 1 - d / threshold) ** 0.1;
 
     //멀리 있는 다른 진동 센서 선택
     const wantConnectSensor = Math.random() < prob;
@@ -99,7 +104,11 @@ export function findOtherSensor(p: p5, me: VSensor, src: VSensor[]): Connect[] {
           const d = p.dist(x, y, ox, oy);
           const prob = Math.max(0, 1 - d / threshold) ** 5;
           const wantConnectCheck = Math.random() < prob;
-          if (wantConnectCheck) connect.push({ p1: [x, y], p2: [ox, oy] });
+          if (wantConnectCheck) {
+            const contained = connect.find((c) => c.p1[0] === x && c.p1[1] === y);
+            if (contained) continue;
+            connect.push({ p1: [x, y], p2: [ox, oy], path: path2AndFilter(checker, [x, y], [ox, oy]), t: 0, shrinking: false });
+          }
         }
       }
     }
@@ -107,16 +116,58 @@ export function findOtherSensor(p: p5, me: VSensor, src: VSensor[]): Connect[] {
   return connect;
 }
 
+export function path2AndFilter(checker: CheckerGrid[], from: [number, number], to: [number, number]) {
+  const path = findPath(checker, from, to);
+
+  let filt: CheckerGrid[] = checker.filter(
+    (check) =>
+      //path1의 xy랑 checker의 위치가 다르면 포함
+      !path.some(([x, y]) => check.pos[0] === x && check.pos[1] === y) ||
+      //시작점과 끝점이면 포함
+      (check.pos[0] === from[0] && check.pos[1] === from[1]) ||
+      (check.pos[0] === to[0] && check.pos[1] === to[1])
+  );
+  filt = filt.filter(() => Math.random() > 0.35);
+
+  return findPath(filt, from, to);
+}
+
 export function drawConnections(p: p5, src: Connect[], checker: CheckerGrid[]) {
-  p.strokeWeight(10);
   p.stroke(0, 0, 255);
 
   for (const c of src) {
-    const path = findPath(checker, c.p1, c.p2);
-    for (let i = 0; i < path.length - 1; i++) {
-      const [x1, y1] = path[i];
-      const [x2, y2] = path[i + 1];
-      p.line(x1, y1, x2, y2);
+    //최대 시간
+    const maxT = c.path.length * TIME;
+    //줄어들고 있는 때가 아니었고 connect의 t가 max + cooldown 지나면
+    if (!c.shrinking && c.t >= maxT + TIME * 5) c.shrinking = true;
+    c.t += c.shrinking ? -TIME : TIME;
+
+    //line setting
+    const d = p.dist(c.p1[0], c.p1[1], c.p2[0], c.p2[1]);
+    const maxWeight = 10;
+    p.strokeWeight(Math.max(1, maxWeight - Math.floor(d / 50)));
+
+    //이거 뭐지
+    const drawCount = Math.floor(c.t / TIME);
+
+    //거꾸로 그리기
+    if (c.shrinking) {
+      c.t -= TIME;
+      if (c.t <= 0) continue;
+      const drawCount = Math.floor(c.t / TIME);
+      const remaining = Math.max(0, c.path.length - 1 - drawCount);
+      for (let i = remaining; i < c.path.length - 1; i++) {
+        const [x1, y1] = c.path[i];
+        const [x2, y2] = c.path[i + 1];
+        p.line(x1, y1, x2, y2);
+      }
+    } else {
+      // 앞에서부터 늘어남
+      for (let i = 0; i < Math.min(drawCount, c.path.length - 1); i++) {
+        const [x1, y1] = c.path[i];
+        const [x2, y2] = c.path[i + 1];
+        p.line(x1, y1, x2, y2);
+      }
     }
   }
 }

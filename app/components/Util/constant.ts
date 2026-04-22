@@ -21,6 +21,10 @@ export const CENTER = CANVAS / 2;
 export const CORNER = [
   [0, 0],
   [0, CANVAS],
+  [CANVAS / 2, 0],
+  [0, CANVAS / 2],
+  [CANVAS / 2, CANVAS],
+  [CANVAS, CANVAS / 2],
   [CANVAS, 0],
   [CANVAS, CANVAS],
 ];

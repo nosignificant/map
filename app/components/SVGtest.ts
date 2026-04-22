@@ -61,9 +61,7 @@ export function SVGsketch(container: HTMLElement) {
       vSensored(p, vSensor);
       updateVSensor(p, vSensor, checker, TIME);
       IZA(p);
-      for (const v of vSensor) {
-        v.connect = findOtherSensor(p, v, vSensor);
-      }
+      for (const v of vSensor) drawConnections(p, v.connect, checker);
     };
 
     //mouseEvent
@@ -72,6 +70,7 @@ export function SVGsketch(container: HTMLElement) {
       closest.near = findNearCheck(p, closest, checker);
       closest.clickCount++;
       closest.t = GRID * closest.clickCount;
+      closest.connect = findOtherSensor(p, closest, vSensor, checker);
       p.loop();
     };
   }, container);

@@ -71,4 +71,7 @@ export type CheckerDistStep = {
 export type Connect = {
   p1: [number, number];
   p2: [number, number];
+  path: [number, number][];
+  t: number;
+  shrinking: boolean;
 };
