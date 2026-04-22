@@ -1,18 +1,10 @@
 import type p5 from "p5";
-import { TreeParams, Pos } from "./Util/types";
-import { CANVAS_H, CANVAS_W, GRID, rows, cols } from "./Util/constant";
+import { TreeParams, Pos } from "../Util/types";
+import { CANVAS_H, CANVAS_W, GRID, rows, cols } from "../Util/constant";
 import { drawCircleCross } from "./Util/drawings";
 
 // t: 0 = 아무것도 없음, 1 = 완전히 자란 상태
-export function drawTree(
-  p: p5,
-  pos: Pos,
-  angle: number,
-  params: TreeParams,
-  occupied: boolean[][],
-  treeOccupied: boolean[][],
-  t: number = 1
-) {
+export function drawTree(p: p5, pos: Pos, angle: number, params: TreeParams, occupied: boolean[][], treeOccupied: boolean[][], t: number = 1) {
   p.push();
   p.noFill();
 
@@ -45,36 +37,12 @@ function branch(
 
   if (occupied[r]?.[c]) {
     if (reversed > 0) {
-      branch(
-        p,
-        pos,
-        angle + Math.PI,
-        len,
-        maxDepth,
-        params,
-        occupied,
-        treeOccupied,
-        t,
-        currentDepth,
-        reversed - 1
-      );
+      branch(p, pos, angle + Math.PI, len, maxDepth, params, occupied, treeOccupied, t, currentDepth, reversed - 1);
     } else {
       const nextX = pos.x + Math.cos(angle + Math.PI) * actualLen;
       const nextY = pos.y + Math.sin(angle + Math.PI) * actualLen;
       drawLine(p, params, pos.x, pos.y, nextX, nextY);
-      branch(
-        p,
-        { x: nextX, y: nextY },
-        angle + Math.PI,
-        len,
-        maxDepth,
-        params,
-        occupied,
-        treeOccupied,
-        t,
-        currentDepth + 1,
-        0
-      );
+      branch(p, { x: nextX, y: nextY }, angle + Math.PI, len, maxDepth, params, occupied, treeOccupied, t, currentDepth + 1, 0);
     }
     return;
   }
@@ -89,32 +57,8 @@ function branch(
   setTreeOccupied(steps, actualLen, pos.x, pos.y, x2, y2, treeOccupied);
 
   if (localT >= 1) {
-    branch(
-      p,
-      { x: x2, y: y2 },
-      angle - params.spread,
-      len * 0.8,
-      maxDepth,
-      params,
-      occupied,
-      treeOccupied,
-      t,
-      currentDepth + 1,
-      reversed
-    );
-    branch(
-      p,
-      { x: x2, y: y2 },
-      angle + params.spread,
-      len * 0.8,
-      maxDepth,
-      params,
-      occupied,
-      treeOccupied,
-      t,
-      currentDepth + 1,
-      reversed
-    );
+    branch(p, { x: x2, y: y2 }, angle - params.spread, len * 0.8, maxDepth, params, occupied, treeOccupied, t, currentDepth + 1, reversed);
+    branch(p, { x: x2, y: y2 }, angle + params.spread, len * 0.8, maxDepth, params, occupied, treeOccupied, t, currentDepth + 1, reversed);
   }
 }
 
@@ -124,15 +68,7 @@ function drawLine(p: p5, params: TreeParams, x: number, y: number, x2: number, y
   p.line(x, y, x2, y2);
 }
 
-function isTreeOccupied(
-  steps: number,
-  actualLen: number,
-  x: number,
-  y: number,
-  x2: number,
-  y2: number,
-  treeOccupied: boolean[][]
-): boolean {
+function isTreeOccupied(steps: number, actualLen: number, x: number, y: number, x2: number, y2: number, treeOccupied: boolean[][]): boolean {
   for (let i = 1; i <= steps; i++) {
     const tx = x + (x2 - x) * (i / steps);
     const ty = y + (y2 - y) * (i / steps);
@@ -143,15 +79,7 @@ function isTreeOccupied(
   return false;
 }
 
-function setTreeOccupied(
-  steps: number,
-  actualLen: number,
-  x: number,
-  y: number,
-  x2: number,
-  y2: number,
-  treeOccupied: boolean[][]
-) {
+function setTreeOccupied(steps: number, actualLen: number, x: number, y: number, x2: number, y2: number, treeOccupied: boolean[][]) {
   for (let i = 0; i <= steps; i++) {
     const tx = x + (x2 - x) * (i / steps);
     const ty = y + (y2 - y) * (i / steps);

@@ -1,12 +1,12 @@
 // 유니티 MonoBehaviour 역할 — setup(), draw(), 이벤트
 import type p5 from "p5";
 import { ImgSet, PlacedImage } from "./Util/types";
-import { getImg, drawAllOccupied } from "./Util/image";
-import { MakeImgSet } from "./Util/edgeAndCorner";
+import { getImg, drawAllOccupied } from "./drawings/image";
+import { MakeImgSet } from "./drawings/edgeAndCorner";
 import { drawOffsetOccupied } from "./Util/drawings";
-import { backGroundSetup, backGrid, backMiniGrid } from "./Util/background";
-import { buildRiverPath, drawAlongRiver, markRiverOccupied, riverRect } from "./riverBranch";
-import { drawTree } from "./proceduralTree";
+import { backGroundSetup, backGrid, backMiniGrid } from "./drawings/background";
+import { buildRiverPath, drawAlongRiver, markRiverOccupied, riverRect } from "./drawings/riverBranch";
+import { drawTree } from "./drawings/proceduralTree";
 import { GRID, DISPLAY_SIZE, CANVAS_W, CANVAS_H, DEFAULT_TREE, RIVER_STEP } from "./Util/constant";
 
 const GROW_SPEED = 0.009;
@@ -18,14 +18,10 @@ export function createSketch(container: HTMLElement) {
   let occupied: boolean[][] = [];
 
   // 나무 그린 영역
-  const treeOccupied: boolean[][] = Array.from({ length: CANVAS_H / GRID }, () =>
-    new Array(CANVAS_W / GRID).fill(false)
-  );
+  const treeOccupied: boolean[][] = Array.from({ length: CANVAS_H / GRID }, () => new Array(CANVAS_W / GRID).fill(false));
 
   // 강 그린 영역
-  const riverOccupied: boolean[][] = Array.from({ length: CANVAS_H / GRID }, () =>
-    new Array(CANVAS_W / GRID).fill(false)
-  );
+  const riverOccupied: boolean[][] = Array.from({ length: CANVAS_H / GRID }, () => new Array(CANVAS_W / GRID).fill(false));
 
   // 코너 나무 성장 t
   let cornerGrowthT = 0;

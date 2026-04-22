@@ -1,6 +1,6 @@
 import type p5 from "p5";
-import { Pos, Grid } from "./Util/types";
-import { GRID, rows, cols } from "./Util/constant";
+import { Pos, Grid } from "../Util/types";
+import { GRID, rows, cols } from "../Util/constant";
 import { drawCircleCross, drawTwoCircle } from "./Util/drawings";
 
 const MAX_NODES = 20;

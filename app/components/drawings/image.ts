@@ -1,5 +1,5 @@
-import { ImgSet } from "./types";
-import { GRID, rows, cols } from "./constant";
+import { ImgSet } from "../Util/types";
+import { GRID, rows, cols } from "../Util/constant";
 
 export function getImg(images: ImgSet[], force: number): ImgSet {
   //여기에 아두이노 연결했을 때 로직 넣기

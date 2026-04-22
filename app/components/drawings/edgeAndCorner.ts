@@ -1,6 +1,6 @@
 import type p5 from "p5";
-import { EdgeResult, ImgSet, Corner } from "./types";
-import { GRID, THRESHOLD, DISPLAY_SIZE } from "./constant";
+import { EdgeResult, ImgSet, Corner } from "../Util/types";
+import { GRID, THRESHOLD, DISPLAY_SIZE } from "../Util/constant";
 
 export function MakeImgSet(p: p5, images: p5.Image[]): ImgSet[] {
   const result: ImgSet[] = [];
@@ -165,9 +165,7 @@ export function findSimpleCorners(offsetMap: boolean[][]): Corner[] {
   return candidates.filter((c) => {
     const hasNearby = candidates.some((other) => {
       if (other === c) return false;
-      const dist =
-        Math.abs(other.pos.y / GRID - c.pos.y / GRID) +
-        Math.abs(other.pos.x / GRID - c.pos.x / GRID);
+      const dist = Math.abs(other.pos.y / GRID - c.pos.y / GRID) + Math.abs(other.pos.x / GRID - c.pos.x / GRID);
       return dist <= CLUSTER_RADIUS;
     });
     return !hasNearby; // 근처에 없는 것 = 단순 코너만 통과
@@ -181,12 +179,7 @@ export function findSimpleCorners(offsetMap: boolean[][]): Corner[] {
 //  hasUp + hasRight → ↗ 오른쪽 위
 //  hasDown + hasLeft  → ↙ 왼쪽 아래
 //  hasDown + hasRight → ↘ 오른쪽 아래
-function getCornerAngle(
-  hasUp: boolean,
-  hasDown: boolean,
-  hasLeft: boolean,
-  hasRight: boolean
-): number | null {
+function getCornerAngle(hasUp: boolean, hasDown: boolean, hasLeft: boolean, hasRight: boolean): number | null {
   // 테두리가 위+왼쪽에 있다 = 이 셀은 이미지 바깥쪽 오른쪽아래 코너
   // → 나무는 반대 방향(↘)으로 자라야 함
   if (hasUp && hasLeft) return Math.PI / 4; // ↘

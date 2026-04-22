@@ -1,6 +1,6 @@
 import type p5 from "p5";
-import { ImgSet, Pos } from "./types";
-import { GRID, CANVAS_W, CANVAS_H, rows, cols } from "./constant";
+import { ImgSet, Pos } from "../Util/types";
+import { GRID, CANVAS_W, CANVAS_H, rows, cols } from "../Util/constant";
 import { dilate } from "./edgeAndCorner";
 
 //이미지 외곽 그리기
