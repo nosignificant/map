@@ -1,5 +1,5 @@
 import p5 from "p5";
-import { MorphFn, Sign, checkerGrid, TestClick } from "./Util/types";
+import { MorphFn, Sign, CheckerGrid, VSensor } from "./Util/types";
 import { loadPath, setupSign } from "./Util/SVGUtils";
 import { interpolate } from "flubber";
 import { GRID, CANVAS_W, CANVAS_H } from "./Util/constant";
@@ -9,8 +9,8 @@ import { checkerboard, initVSensor, draw5x5, snapToSensor, updateVSensor } from 
 export function SVGsketch(container: HTMLElement) {
   let morph: MorphFn;
   let s1: Sign;
-  let checker: checkerGrid[];
-  let vSensor: TestClick[];
+  let checker: CheckerGrid[];
+  let vSensor: VSensor[];
 
   const myP = new p5((p: p5) => {
     p.setup = async () => {

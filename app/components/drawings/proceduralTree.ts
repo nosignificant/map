@@ -1,7 +1,7 @@
 import type p5 from "p5";
 import { TreeParams, Pos } from "../Util/types";
 import { CANVAS_H, CANVAS_W, GRID, rows, cols } from "../Util/constant";
-import { drawCircleCross } from "./Util/drawings";
+import { drawCircleCross } from "../drawings/drawings";
 
 // t: 0 = 아무것도 없음, 1 = 완전히 자란 상태
 export function drawTree(p: p5, pos: Pos, angle: number, params: TreeParams, occupied: boolean[][], treeOccupied: boolean[][], t: number = 1) {

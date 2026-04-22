@@ -1,9 +1,9 @@
 import type p5 from "p5";
-import { checkerGrid, TestClick } from "../Util/types";
+import { CheckerGrid, VSensor } from "../Util/types";
 import { GRID, CANVAS_W, CANVAS_H, rows, cols } from "../Util/constant";
 
-export function checkerboard(): checkerGrid[] {
-  const black: checkerGrid[] = [];
+export function checkerboard(): CheckerGrid[] {
+  const black: CheckerGrid[] = [];
 
   for (let ri = 1; ri <= 30; ri++) {
     for (let ci = 1; ci <= 30; ci++) {
@@ -17,8 +17,8 @@ export function checkerboard(): checkerGrid[] {
   }
   return black;
 }
-export function initVSensor(checker: checkerGrid[]): TestClick[] {
-  const result: TestClick[] = [];
+export function initVSensor(checker: CheckerGrid[]): VSensor[] {
+  const result: VSensor[] = [];
   const rows: { y: number; ri: number }[] = [];
   const cols: { x: number; ci: number }[] = [];
 
@@ -36,7 +36,7 @@ export function initVSensor(checker: checkerGrid[]): TestClick[] {
   }
   return result;
 }
-export function draw5x5(p: p5, clicks: TestClick[]) {
+export function draw5x5(p: p5, clicks: VSensor[]) {
   p.strokeWeight(1);
   p.stroke(0);
   // 선
@@ -48,7 +48,7 @@ export function draw5x5(p: p5, clicks: TestClick[]) {
   for (const y of ys) p.line(0, y, CANVAS_W, y);
 }
 
-export function updateVSensor(p: p5, clicks: TestClick[]) {
+export function updateVSensor(p: p5, clicks: VSensor[]) {
   if (!clicks || clicks.length === 0) return;
 
   for (const c of clicks) {
@@ -60,8 +60,8 @@ export function updateVSensor(p: p5, clicks: TestClick[]) {
   }
 }
 
-export function snapToSensor(p: p5, src: TestClick[]): TestClick {
-  let closest: TestClick = { checkerGrid: { grid: { ri: 0, ci: 0 }, pos: [0, 0] }, clickCount: 0, t: 0 };
+export function snapToSensor(p: p5, src: VSensor[]): VSensor {
+  let closest: VSensor = { checkerGrid: { grid: { ri: 0, ci: 0 }, pos: [0, 0] }, clickCount: 0, t: 0 };
   let minDist: number = Infinity;
   for (const c of src) {
     const [x, y] = c.checkerGrid.pos;
@@ -72,4 +72,10 @@ export function snapToSensor(p: p5, src: TestClick[]): TestClick {
     }
   }
   return closest;
+}
+
+export function foundNearCheck(): CheckerGrid[] {
+  const near: CheckerGrid[] = [];
+
+  return near;
 }
