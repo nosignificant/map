@@ -136,8 +136,10 @@ export function drawConnections(p: p5, src: Connect[], checker: CheckerGrid[]) {
   p.stroke(0, 0, 255);
 
   for (const c of src) {
+    if (c.path.length === 0) continue;
     //최대 시간
     const maxT = c.path.length * TIME;
+
     //줄어들고 있는 때가 아니었고 connect의 t가 max + cooldown 지나면
     if (!c.shrinking && c.t >= maxT + TIME * 5) c.shrinking = true;
     c.t += c.shrinking ? -TIME : TIME;
@@ -147,27 +149,30 @@ export function drawConnections(p: p5, src: Connect[], checker: CheckerGrid[]) {
     const maxWeight = 10;
     p.strokeWeight(Math.max(1, maxWeight - Math.floor(d / 50)));
 
-    //이거 뭐지
+    //프레임마다 time을 쁠마하고있으니까 t / time하면 몇번째인지 나옴
     const drawCount = Math.floor(c.t / TIME);
 
-    //거꾸로 그리기
+    //뒤에서부터 그림
     if (c.shrinking) {
-      c.t -= TIME;
-      if (c.t <= 0) continue;
-      const drawCount = Math.floor(c.t / TIME);
-      const remaining = Math.max(0, c.path.length - 1 - drawCount);
-      for (let i = remaining; i < c.path.length - 1; i++) {
+      const currentIndex = Math.max(0, c.path.length - 1 - drawCount);
+      for (let i = currentIndex; i < c.path.length - 1; i++) {
         const [x1, y1] = c.path[i];
         const [x2, y2] = c.path[i + 1];
         p.line(x1, y1, x2, y2);
       }
     } else {
-      // 앞에서부터 늘어남
-      for (let i = 0; i < Math.min(drawCount, c.path.length - 1); i++) {
+      // 앞에서부터 그림
+      const currentIndex = Math.min(drawCount, c.path.length - 1);
+      for (let i = 0; i < currentIndex; i++) {
         const [x1, y1] = c.path[i];
         const [x2, y2] = c.path[i + 1];
         p.line(x1, y1, x2, y2);
       }
     }
+
+    const [sx, sy] = c.path[0];
+    const [ex, ey] = c.path[c.path.length - 1];
+    p.circle(sx, sy, GRID / 2);
+    p.circle(ex, ey, GRID / 2);
   }
 }
