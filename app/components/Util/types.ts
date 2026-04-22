@@ -59,10 +59,16 @@ export type VSensor = {
   near: CheckerDistStep[];
   clickCount: number;
   t: number;
+  connect: Connect[];
 };
 
 //T sensor images
 export type CheckerDistStep = {
   checkerGrid: CheckerGrid;
   distStep: number;
+};
+
+export type Connect = {
+  p1: [number, number];
+  p2: [number, number];
 };

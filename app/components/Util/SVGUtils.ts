@@ -1,6 +1,6 @@
 import { MorphFn, Sign } from "./types";
 import p5 from "p5";
-import { GRID, DISPLAY_SIZE, CANVAS_W, CANVAS_H, DEFAULT_TREE, RIVER_STEP } from "./constant";
+import { GRID, DISPLAY_SIZE, CANVAS, DEFAULT_TREE, RIVER_STEP } from "./constant";
 
 const GROW_SPEED = 0.009;
 
@@ -58,4 +58,39 @@ function drawSVGOccupied(p: p5, points: [number, number][], offsetX: number, off
     const scale = 3;
     p.rect(x * scale + offsetX, y * scale + offsetY, GRID, GRID);
   }
+}
+
+//8방향으로 1칸씩 늘림
+function pointSnapAndDilate(points: [number, number][]): [number, number][] {
+  const set = new Set<string>();
+  const result: [number, number][] = [];
+
+  const dirs = [
+    [0, 0],
+    [-1, 0],
+    [1, 0],
+    [0, -1],
+    [0, 1],
+    [-1, -1],
+    [-1, 1],
+    [1, -1],
+    [1, 1],
+  ];
+
+  for (const [x, y] of points) {
+    // 스냅하기
+    const cx = Math.floor(x / GRID) * GRID;
+    const cy = Math.floor(y / GRID) * GRID;
+
+    for (const [dr, dc] of dirs) {
+      const nx = cx + dc * GRID;
+      const ny = cy + dr * GRID;
+      const key = `${nx},${ny}`;
+      if (!set.has(key)) {
+        set.add(key);
+        result.push([nx, ny]);
+      }
+    }
+  }
+  return result;
 }

@@ -1,12 +1,12 @@
 import p5 from "p5";
-import { MorphFn, Sign, CheckerGrid, VSensor } from "./Util/types";
+import { MorphFn, Sign, CheckerGrid, VSensor, Connect } from "./Util/types";
 import { loadPath, setupSign } from "./Util/SVGUtils";
 import { interpolate } from "flubber";
 import { GRID, CANVAS, TIME } from "./Util/constant";
 import { backGroundSetup } from "./drawings/background";
 import { checkerboard, draw5x5 } from "./drawings/checkerboard";
 import { IZA } from "./IZA";
-import { initVSensor, snapToSensor, updateVSensor, vSensored, findNearCheck } from "./sensors/vSensor";
+import { initVSensor, snapToSensor, updateVSensor, vSensored, findNearCheck, findOtherSensor, drawConnections } from "./sensors/vSensor";
 import { drawTSensor } from "./sensors/tSensor";
 
 export function SVGsketch(container: HTMLElement) {
@@ -59,8 +59,11 @@ export function SVGsketch(container: HTMLElement) {
       }
       p.strokeWeight(1);
       vSensored(p, vSensor);
-      updateVSensor(p, vSensor, TIME);
+      updateVSensor(p, vSensor, checker, TIME);
       IZA(p);
+      for (const v of vSensor) {
+        v.connect = findOtherSensor(p, v, vSensor);
+      }
     };
 
     //mouseEvent
@@ -68,44 +71,9 @@ export function SVGsketch(container: HTMLElement) {
       const closest = snapToSensor(p, vSensor);
       closest.near = findNearCheck(p, closest, checker);
       closest.clickCount++;
-      closest.t = GRID * 2.5;
+      closest.t = GRID * closest.clickCount;
       p.loop();
     };
   }, container);
   return myP;
-}
-
-//8방향으로 1칸씩 늘림
-function pointSnapAndDilate(points: [number, number][]): [number, number][] {
-  const set = new Set<string>();
-  const result: [number, number][] = [];
-
-  const dirs = [
-    [0, 0],
-    [-1, 0],
-    [1, 0],
-    [0, -1],
-    [0, 1],
-    [-1, -1],
-    [-1, 1],
-    [1, -1],
-    [1, 1],
-  ];
-
-  for (const [x, y] of points) {
-    // 스냅하기
-    const cx = Math.floor(x / GRID) * GRID;
-    const cy = Math.floor(y / GRID) * GRID;
-
-    for (const [dr, dc] of dirs) {
-      const nx = cx + dc * GRID;
-      const ny = cy + dr * GRID;
-      const key = `${nx},${ny}`;
-      if (!set.has(key)) {
-        set.add(key);
-        result.push([nx, ny]);
-      }
-    }
-  }
-  return result;
 }

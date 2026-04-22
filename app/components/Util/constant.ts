@@ -1,4 +1,4 @@
-import { TreeParams, Corner } from "./types";
+import { TreeParams } from "./types";
 
 export const GRID = 40;
 export const THRESHOLD = 35;

@@ -1,6 +1,6 @@
 import type p5 from "p5";
-import { ImgSet, Pos } from "../Util/types";
-import { GRID, CANVAS, rows, cols } from "../Util/constant";
+import { ImgSet } from "../Util/types";
+import { GRID } from "../Util/constant";
 import { dilate } from "../Util/edgeAndCorner";
 
 //이미지 외곽 그리기
@@ -54,12 +54,12 @@ export function drawOffsetOccupied(p: p5, src: boolean[][]) {
 }
 
 // draw small things
-export function drawTwoCircle(p: p5, pos: Pos, r: number) {
+export function drawTwoCircle(p: p5, x: number, y: number, r: number) {
   p.noFill();
   p.stroke(255, 220, 0);
   p.strokeWeight(1);
-  p.circle(pos.x, pos.y, r);
-  p.circle(pos.x, pos.y, r / 2);
+  p.circle(x, y, r);
+  p.circle(x, y, r / 2);
 }
 
 export function drawCircleCross(p: p5, x: number, y: number) {

@@ -1,6 +1,6 @@
 import type p5 from "p5";
 import { TreeParams, Pos } from "../Util/types";
-import { CANVAS_H, CANVAS_W, GRID, rows, cols } from "../Util/constant";
+import { CANVAS, GRID, rows, cols } from "../Util/constant";
 import { drawCircleCross } from "../drawings/drawings";
 
 // t: 0 = 아무것도 없음, 1 = 완전히 자란 상태
@@ -26,7 +26,7 @@ function branch(
   reversed: number
 ) {
   // 캔버스 밖이면 그냥 멈춤
-  if (pos.x < 0 || pos.x > CANVAS_W || pos.y < 0 || pos.y > CANVAS_H) return;
+  if (pos.x < 0 || pos.x > CANVAS || pos.y < 0 || pos.y > CANVAS) return;
 
   const r = Math.floor(pos.y / GRID);
   const c = Math.floor(pos.x / GRID);
