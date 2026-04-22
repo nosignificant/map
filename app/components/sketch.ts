@@ -3,7 +3,7 @@ import type p5 from "p5";
 import { ImgSet, PlacedImage } from "./Util/types";
 import { getImg, drawAllOccupied } from "./drawings/image";
 import { MakeImgSet } from "./drawings/edgeAndCorner";
-import { drawOffsetOccupied } from "./Util/drawings";
+import { drawOffsetOccupied } from "./drawings/drawings";
 import { backGroundSetup, backGrid, backMiniGrid } from "./drawings/background";
 import { buildRiverPath, drawAlongRiver, markRiverOccupied, riverRect } from "./drawings/riverBranch";
 import { drawTree } from "./drawings/proceduralTree";

@@ -40,18 +40,22 @@ export function draw5x5(p: p5, clicks: TestClick[]) {
   p.strokeWeight(1);
   p.stroke(0);
   // 선
+  if (!clicks || clicks.length === 0) return;
+
   const xs = [...new Set(clicks.map((c) => c.checkerGrid.pos[0]))];
   const ys = [...new Set(clicks.map((c) => c.checkerGrid.pos[1]))];
   for (const x of xs) p.line(x, 0, x, CANVAS_H);
   for (const y of ys) p.line(0, y, CANVAS_W, y);
 }
 
-export function drawVSensor(p: p5, clicks: TestClick[]) {
+export function updateVSensor(p: p5, clicks: TestClick[]) {
+  if (!clicks || clicks.length === 0) return;
+
   for (const c of clicks) {
     const [x, y] = [c.checkerGrid.pos[0], c.checkerGrid.pos[1]];
 
-    if (c.clickCount === 1) {
-      p.circle(x, y, GRID + 10);
+    if (c.clickCount > 0) {
+      p.circle(x, y, GRID + 10 * c.clickCount);
     }
   }
 }

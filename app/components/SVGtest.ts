@@ -2,15 +2,15 @@ import p5 from "p5";
 import { MorphFn, Sign, checkerGrid, TestClick } from "./Util/types";
 import { loadPath, setupSign } from "./Util/SVGUtils";
 import { interpolate } from "flubber";
-import { GRID, DISPLAY_SIZE, CANVAS_W, CANVAS_H } from "./Util/constant";
+import { GRID, CANVAS_W, CANVAS_H } from "./Util/constant";
 import { backGroundSetup } from "./drawings/background";
-import { checkerboard, initVSensor, draw5x5, snapToSensor } from "./drawings/checkerboard";
+import { checkerboard, initVSensor, draw5x5, snapToSensor, updateVSensor } from "./drawings/checkerboard";
 
 export function SVGsketch(container: HTMLElement) {
   let morph: MorphFn;
   let s1: Sign;
   let checker: checkerGrid[];
-  let vSensor: testClick[];
+  let vSensor: TestClick[];
 
   const myP = new p5((p: p5) => {
     p.setup = async () => {
@@ -26,6 +26,7 @@ export function SVGsketch(container: HTMLElement) {
         string: false,
       }) as unknown as MorphFn;
 
+      //checkerboard initiate
       checker = checkerboard();
       vSensor = initVSensor(checker);
     };
@@ -34,27 +35,30 @@ export function SVGsketch(container: HTMLElement) {
     // draw //
     // draw //
     p.draw = () => {
+      if (!checker || !vSensor) return;
+
       //await으로 뭔가 받아오기 전에 그리지 말자!
       backGroundSetup(p);
       draw5x5(p, vSensor);
-      vSensor = draw5x5(p, checker);
       for (const c of checker) {
         const [x, y] = c.pos;
         p.fill(255);
         p.circle(x, y, GRID);
       }
-
-      for (const [x, y] of vSensor) {
+      // 센서들 위치 그리기
+      for (const s of vSensor) {
+        const [x, y] = [s.checkerGrid.pos[0], s.checkerGrid.pos[1]];
         p.noFill();
         p.stroke(255, 0, 0);
         p.circle(x, y, GRID);
       }
       p.strokeWeight(1);
+      updateVSensor(p, vSensor);
     };
 
     p.mouseClicked = () => {
-      const snappedPos = snapToSensor(p, vSensor);
-      snappedPos.clickCount++;
+      const cloest = snapToSensor(p, vSensor);
+      cloest.clickCount++;
       p.loop();
     };
   }, container);
