@@ -2,11 +2,12 @@ import p5 from "p5";
 import { MorphFn, Sign, CheckerGrid, VSensor } from "./Util/types";
 import { loadPath, setupSign } from "./Util/SVGUtils";
 import { interpolate } from "flubber";
-import { GRID, CANVAS_W, CANVAS_H } from "./Util/constant";
+import { GRID, CANVAS, TIME } from "./Util/constant";
 import { backGroundSetup } from "./drawings/background";
-import { checkerboard, initVSensor, draw5x5, snapToSensor, vSensored, updateVSensor } from "./drawings/checkerboard";
-
-const time = 0.1;
+import { checkerboard, draw5x5 } from "./drawings/checkerboard";
+import { IZA } from "./IZA";
+import { initVSensor, snapToSensor, updateVSensor, vSensored, findNearCheck } from "./sensors/vSensor";
+import { drawTSensor } from "./sensors/tSensor";
 
 export function SVGsketch(container: HTMLElement) {
   let morph: MorphFn;
@@ -18,7 +19,7 @@ export function SVGsketch(container: HTMLElement) {
     p.setup = async () => {
       //
       //canvas setting
-      p.createCanvas(CANVAS_W, CANVAS_H);
+      p.createCanvas(CANVAS, CANVAS);
 
       //path setting
       const pathA = await loadPath("/svg/1.svg");
@@ -31,6 +32,7 @@ export function SVGsketch(container: HTMLElement) {
       //checkerboard initiate
       checker = checkerboard();
       vSensor = initVSensor(checker);
+      console.log(checker.filter((c) => c.grid.ri === 15));
     };
 
     // draw //
@@ -41,6 +43,7 @@ export function SVGsketch(container: HTMLElement) {
 
       //await으로 뭔가 받아오기 전에 그리지 말자!
       backGroundSetup(p);
+      drawTSensor(p);
       draw5x5(p, vSensor);
       for (const c of checker) {
         const [x, y] = c.pos;
@@ -56,13 +59,16 @@ export function SVGsketch(container: HTMLElement) {
       }
       p.strokeWeight(1);
       vSensored(p, vSensor);
-      updateVSensor(p, vSensor, time);
+      updateVSensor(p, vSensor, TIME);
+      IZA(p);
     };
 
     //mouseEvent
     p.mouseClicked = () => {
-      const cloest = snapToSensor(p, vSensor);
-      cloest.clickCount++;
+      const closest = snapToSensor(p, vSensor);
+      closest.near = findNearCheck(p, closest, checker);
+      closest.clickCount++;
+      closest.t = GRID * 2.5;
       p.loop();
     };
   }, container);

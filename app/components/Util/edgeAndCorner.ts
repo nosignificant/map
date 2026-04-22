@@ -1,6 +1,6 @@
 import type p5 from "p5";
-import { EdgeResult, ImgSet, Corner } from "../Util/types";
-import { GRID, THRESHOLD, DISPLAY_SIZE } from "../Util/constant";
+import { EdgeResult, ImgSet, Corner } from "./types";
+import { GRID, THRESHOLD, DISPLAY_SIZE } from "./constant";
 
 export function MakeImgSet(p: p5, images: p5.Image[]): ImgSet[] {
   const result: ImgSet[] = [];

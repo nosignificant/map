@@ -1,7 +1,7 @@
 import type p5 from "p5";
 import { ImgSet, Pos } from "../Util/types";
-import { GRID, CANVAS_W, CANVAS_H, rows, cols } from "../Util/constant";
-import { dilate } from "./edgeAndCorner";
+import { GRID, CANVAS, rows, cols } from "../Util/constant";
+import { dilate } from "../Util/edgeAndCorner";
 
 //이미지 외곽 그리기
 export function drawOutline(p: p5, set: ImgSet[], occupied: boolean[][]) {
@@ -62,14 +62,14 @@ export function drawTwoCircle(p: p5, pos: Pos, r: number) {
   p.circle(pos.x, pos.y, r / 2);
 }
 
-export function drawCircleCross(p: p5, pos: Pos) {
+export function drawCircleCross(p: p5, x: number, y: number) {
   p.noFill();
   p.stroke(255, 220, 0);
   p.strokeWeight(1);
-  p.circle(pos.x, pos.y, GRID);
+  p.circle(x, y, GRID);
 
-  const startX = pos.x - GRID / 4;
-  const startY = pos.y - GRID / 4;
-  p.line(startX, pos.y, startX + GRID / 2, pos.y);
-  p.line(pos.x, startY, pos.x, startY + GRID / 2);
+  const startX = x - GRID / 4;
+  const startY = y - GRID / 4;
+  p.line(startX, y, startX + GRID / 2, y);
+  p.line(x, startY, x, startY + GRID / 2);
 }

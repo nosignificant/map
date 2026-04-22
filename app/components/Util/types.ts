@@ -56,6 +56,13 @@ export type CheckerGrid = { grid: Grid; pos: [number, number] };
 //마우스 지정한 blackboard 중심지마다 n초씩 추가해서 강도 강하게 원그리기? - 시간 지나면 원 줄어들게 하기?
 export type VSensor = {
   checkerGrid: CheckerGrid;
+  near: CheckerDistStep[];
   clickCount: number;
   t: number;
+};
+
+//T sensor images
+export type CheckerDistStep = {
+  checkerGrid: CheckerGrid;
+  distStep: number;
 };

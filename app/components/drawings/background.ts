@@ -1,18 +1,18 @@
 import type p5 from "p5";
-import { GRID, CANVAS_W, CANVAS_H, rows, cols } from "../Util/constant";
+import { GRID, CANVAS, rows, cols } from "../Util/constant";
 
 export function backGroundSetup(p: p5) {
   p.fill(255, 255, 255);
   p.stroke(0);
   p.strokeWeight(2);
-  p.rect(0, 0, CANVAS_W, CANVAS_H);
+  p.rect(0, 0, CANVAS, CANVAS);
 }
 
 export function backGrid(p: p5) {
   const split = 5;
 
-  const spacingH = CANVAS_H / split;
-  const spacingW = CANVAS_W / split;
+  const spacingH = CANVAS / split;
+  const spacingW = CANVAS / split;
   for (let i = 0; i < split; i++) {
     const x = spacingW * i + spacingW;
     const y = spacingH * i + spacingH;
@@ -20,8 +20,8 @@ export function backGrid(p: p5) {
     p.strokeWeight(1);
     p.stroke(0);
 
-    p.line(x, 0, x, CANVAS_H);
-    p.line(0, y, CANVAS_W, y);
+    p.line(x, 0, x, CANVAS);
+    p.line(0, y, CANVAS, y);
   }
 }
 
@@ -37,5 +37,3 @@ export function backMiniGrid(p: p5) {
     }
   }
 }
-
-// checkerBoard function
