@@ -98,18 +98,6 @@ export function buildRiverPath(startX: number, startY: number, occupied: boolean
 
 // ── 매 프레임 t만큼만 그리기 ──────────────────────────────────────────────
 
-export function drawAlongRiver(p: p5, pos: Pos[], riverOccupied: boolean[][], t: number) {
-  for (let i = 0; i < pos.length; i++) {
-    const to = pos[i + 1];
-    if (!to) break;
-
-    const segIndex = i; // 1, 2, 3, 4 ...
-
-    if (i === 1 || i === 2 || i === 3) drawTwoCircle(p, to, 4);
-    if (i === 4 || i === 5 || i === 6) drawCircleCross(p, to);
-  }
-}
-
 export function riverRect(p: p5, riverOccupied: boolean[][]) {
   p.noStroke();
   p.fill(255, 255, 255);

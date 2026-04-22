@@ -5,7 +5,7 @@ import { getImg, drawAllOccupied } from "./drawings/image";
 import { MakeImgSet } from "./Util/edgeAndCorner";
 import { drawOffsetOccupied } from "./drawings/drawings";
 import { backGroundSetup, backGrid, backMiniGrid } from "./drawings/background";
-import { buildRiverPath, drawAlongRiver, markRiverOccupied, riverRect } from "./drawings/riverBranch";
+import { buildRiverPath, markRiverOccupied, riverRect } from "./drawings/riverBranch";
 import { drawTree } from "./drawings/proceduralTree";
 import { GRID, DISPLAY_SIZE, CANVAS, DEFAULT_TREE, RIVER_STEP } from "./Util/constant";
 
@@ -77,10 +77,6 @@ export function createSketch(container: HTMLElement) {
         console.log("corners:", img.corners.length);
         for (const pl of img.PlacedImage) {
           p.image(img.img, pl.pos.x, pl.pos.y, DISPLAY_SIZE, DISPLAY_SIZE);
-
-          for (const path of pl.riverPaths) {
-            drawAlongRiver(p, path, riverOccupied, pl.growthT);
-          }
 
           for (const c of img.corners) {
             drawTree(
