@@ -1,7 +1,7 @@
 import type p5 from "p5";
 import { Pos, Grid } from "../Util/types";
 import { GRID, rows, cols } from "../Util/constant";
-import { drawCircleCross, drawTwoCircle } from "./Util/drawings";
+import { drawCircleCross, drawTwoCircle } from "../drawings/drawings";
 
 const MAX_NODES = 20;
 const BRANCH_CHANCE = 0.25;

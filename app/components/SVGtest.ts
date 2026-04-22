@@ -4,7 +4,9 @@ import { loadPath, setupSign } from "./Util/SVGUtils";
 import { interpolate } from "flubber";
 import { GRID, CANVAS_W, CANVAS_H } from "./Util/constant";
 import { backGroundSetup } from "./drawings/background";
-import { checkerboard, initVSensor, draw5x5, snapToSensor, updateVSensor } from "./drawings/checkerboard";
+import { checkerboard, initVSensor, draw5x5, snapToSensor, vSensored, updateVSensor } from "./drawings/checkerboard";
+
+const time = 0.1;
 
 export function SVGsketch(container: HTMLElement) {
   let morph: MorphFn;
@@ -53,9 +55,11 @@ export function SVGsketch(container: HTMLElement) {
         p.circle(x, y, GRID);
       }
       p.strokeWeight(1);
-      updateVSensor(p, vSensor);
+      vSensored(p, vSensor);
+      updateVSensor(p, vSensor, time);
     };
 
+    //mouseEvent
     p.mouseClicked = () => {
       const cloest = snapToSensor(p, vSensor);
       cloest.clickCount++;

@@ -31,7 +31,7 @@ export function initVSensor(checker: CheckerGrid[]): VSensor[] {
 
   for (const col of cols) {
     for (const row of rows) {
-      result.push({ checkerGrid: { grid: { ri: row.ri, ci: col.ci }, pos: [col.x, row.y] }, clickCount: 0, t: 0 });
+      result.push({ checkerGrid: { grid: { ri: row.ri, ci: col.ci }, pos: [col.x, row.y] }, clickCount: 0, t: 60 });
     }
   }
   return result;
@@ -48,14 +48,14 @@ export function draw5x5(p: p5, clicks: VSensor[]) {
   for (const y of ys) p.line(0, y, CANVAS_W, y);
 }
 
-export function updateVSensor(p: p5, clicks: VSensor[]) {
-  if (!clicks || clicks.length === 0) return;
+export function vSensored(p: p5, src: VSensor[]) {
+  if (!src || src.length === 0) return;
 
-  for (const c of clicks) {
+  for (const c of src) {
     const [x, y] = [c.checkerGrid.pos[0], c.checkerGrid.pos[1]];
 
     if (c.clickCount > 0) {
-      p.circle(x, y, GRID + 10 * c.clickCount);
+      p.circle(x, y, GRID + c.t * c.clickCount);
     }
   }
 }
@@ -78,4 +78,16 @@ export function foundNearCheck(): CheckerGrid[] {
   const near: CheckerGrid[] = [];
 
   return near;
+}
+
+export function updateVSensor(p: p5, src: VSensor[], t: number) {
+  for (const c of src) {
+    if (c.clickCount > 0) {
+      c.t -= t;
+      if (c.t <= 0) {
+        c.clickCount--;
+        c.t = 60;
+      }
+    }
+  }
 }
