@@ -37,7 +37,7 @@ export function updateVSensor(p: p5, src: VSensor[], checker: CheckerGrid[], t: 
   for (const c of src) {
     if (c.clickCount > 0) {
       for (const n of c.near) {
-        if (n.distStep === 1) drawCircleCross(p, n.checkerGrid.pos[0], n.checkerGrid.pos[1]);
+        if (n.distStep === 1) drawCircleCross(p, n.checkerGrid.pos[0], n.checkerGrid.pos[1], GRID);
         if (c.clickCount >= 2 && n.distStep === 2) drawTwoCircle(p, n.checkerGrid.pos[0], n.checkerGrid.pos[1], GRID);
       }
       c.t -= t;
@@ -172,7 +172,7 @@ export function drawConnections(p: p5, src: Connect[], checker: CheckerGrid[]) {
 
     const [sx, sy] = c.path[0];
     const [ex, ey] = c.path[c.path.length - 1];
-    p.circle(sx, sy, GRID / 2);
-    p.circle(ex, ey, GRID / 2);
+    drawCircleCross(p, sx, sy, GRID / 2);
+    drawCircleCross(p, ex, ey, GRID / 2);
   }
 }

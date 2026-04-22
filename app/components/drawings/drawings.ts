@@ -62,11 +62,10 @@ export function drawTwoCircle(p: p5, x: number, y: number, r: number) {
   p.circle(x, y, r / 2);
 }
 
-export function drawCircleCross(p: p5, x: number, y: number) {
+export function drawCircleCross(p: p5, x: number, y: number, r: number) {
   p.noFill();
-  p.stroke(255, 220, 0);
   p.strokeWeight(1);
-  p.circle(x, y, GRID);
+  p.circle(x, y, r);
 
   const startX = x - GRID / 4;
   const startY = y - GRID / 4;

@@ -45,10 +45,13 @@ export function SVGsketch(container: HTMLElement) {
       backGroundSetup(p);
       drawTSensor(p);
       draw5x5(p, vSensor);
+
+      //배경 교차되는 점들 그림
       for (const c of checker) {
         const [x, y] = c.pos;
         p.fill(255);
-        p.circle(x, y, GRID);
+        p.noStroke();
+        //p.circle(x, y, GRID);
       }
       // 센서들 위치 그리기
       for (const s of vSensor) {
