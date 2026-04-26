@@ -34,8 +34,7 @@ export function SVGsketch(container: HTMLElement) {
       checker = checkerboard();
       fg = fullGrid();
       vSensor = initVSensor(fg);
-      console.log(fg.find((c) => c.grid.ri === 3));
-      console.log(vSensor[0]);
+      console.log(checker.filter((c) => c.grid.ri === 15));
     };
 
     // draw //
@@ -56,11 +55,16 @@ export function SVGsketch(container: HTMLElement) {
         p.noStroke();
         p.circle(x, y, GRID);
       }
+
+      for (const f of fg) {
+        const [x, y] = f.pos;
+        p.noFill();
+        p.circle(x, y, GRID);
+      }
       // 센서들 위치 그리기
       for (const s of vSensor) {
         const [x, y] = [s.checkerGrid.pos[0], s.checkerGrid.pos[1]];
         p.noFill();
-
         p.stroke(255, 0, 0);
         p.circle(x, y, GRID);
       }

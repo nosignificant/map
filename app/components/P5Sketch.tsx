@@ -6,7 +6,7 @@ import { useEffect, useRef } from "react";
 import type p5 from "p5";
 import { createSketch } from "./sketch";
 import { SVGsketch } from "./SVGtest";
-
+import { shaderSketch } from "./shaderTest";
 //monobehaviour
 export default function P5Sketch() {
   //GameObject containerRef;

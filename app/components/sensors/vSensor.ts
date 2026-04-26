@@ -145,7 +145,7 @@ export function drawConnections(p: p5, src: Connect[], checker: CheckerGrid[]) {
     c.t += c.shrinking ? -TIME : TIME;
 
     //line setting
-    const d = p.dist(c.p1[0], c.p1[1], c.p2[0], c.p2[1]);
+    const d = Math.hypot(c.p2[0] - c.p1[0], c.p2[1] - c.p1[1]);
     const maxWeight = 10;
     p.strokeWeight(Math.max(1, maxWeight - Math.floor(d / 50)));
 
