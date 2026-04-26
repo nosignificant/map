@@ -4,7 +4,7 @@ import { loadPath, setupSign } from "./Util/SVGUtils";
 import { interpolate } from "flubber";
 import { GRID, CANVAS, TIME } from "./Util/constant";
 import { backGroundSetup } from "./drawings/background";
-import { checkerboard, draw5x5 } from "./drawings/checkerboard";
+import { fullGrid, checkerboard, draw5x5 } from "./drawings/checkerboard";
 import { IZA } from "./IZA";
 import { initVSensor, snapToSensor, updateVSensor, vSensored, findNearCheck, findOtherSensor, drawConnections } from "./sensors/vSensor";
 import { drawTSensor } from "./sensors/tSensor";
@@ -12,6 +12,7 @@ import { drawTSensor } from "./sensors/tSensor";
 export function SVGsketch(container: HTMLElement) {
   let morph: MorphFn;
   let s1: Sign;
+  let fg: CheckerGrid[];
   let checker: CheckerGrid[];
   let vSensor: VSensor[];
 
@@ -31,8 +32,10 @@ export function SVGsketch(container: HTMLElement) {
 
       //checkerboard initiate
       checker = checkerboard();
-      vSensor = initVSensor(checker);
-      console.log(checker.filter((c) => c.grid.ri === 15));
+      fg = fullGrid();
+      vSensor = initVSensor(fg);
+      console.log(fg.find((c) => c.grid.ri === 3));
+      console.log(vSensor[0]);
     };
 
     // draw //
@@ -49,14 +52,15 @@ export function SVGsketch(container: HTMLElement) {
       //배경 교차되는 점들 그림
       for (const c of checker) {
         const [x, y] = c.pos;
-        p.fill(255);
+        p.fill(210, 210, 210);
         p.noStroke();
-        //p.circle(x, y, GRID);
+        p.circle(x, y, GRID);
       }
       // 센서들 위치 그리기
       for (const s of vSensor) {
         const [x, y] = [s.checkerGrid.pos[0], s.checkerGrid.pos[1]];
         p.noFill();
+
         p.stroke(255, 0, 0);
         p.circle(x, y, GRID);
       }

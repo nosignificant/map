@@ -2,14 +2,30 @@ import type p5 from "p5";
 import { CheckerGrid, VSensor } from "../Util/types";
 import { GRID, CANVAS } from "../Util/constant";
 
+export function fullGrid(): CheckerGrid[] {
+  const fullGrid: CheckerGrid[] = [];
+
+  for (let ri = 0; ri < 29; ri++) {
+    for (let ci = 0; ci < 29; ci++) {
+      const x = GRID + ci * GRID;
+      const y = GRID + ri * GRID;
+
+      fullGrid.push({ grid: { ri: ri, ci: ci }, pos: [x, y] });
+    }
+  }
+  return fullGrid;
+}
+
 export function checkerboard(): CheckerGrid[] {
   const black: CheckerGrid[] = [];
 
-  for (let ri = 1; ri < 30; ri++) {
-    for (let ci = 1; ci < 30; ci++) {
-      if ((ri + ci) % 2 === 0) continue;
-      const x = ci * GRID;
-      const y = ri * GRID;
+  for (let ri = 0; ri < 29; ri++) {
+    for (let ci = 0; ci < 29; ci++) {
+      if (ci % 2 === 0 && ri % 2 === 1) continue;
+      if (ci % 2 === 1 && ri % 2 === 0) continue;
+
+      const x = GRID + ci * GRID;
+      const y = GRID + ri * GRID;
 
       black.push({ grid: { ri: Math.floor(ri / 2), ci: Math.floor(ci / 2) }, pos: [x, y] });
     }

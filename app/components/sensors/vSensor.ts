@@ -9,7 +9,7 @@ export function initVSensor(checker: CheckerGrid[]): VSensor[] {
   const rows: { y: number; ri: number }[] = [];
   const cols: { x: number; ci: number }[] = [];
 
-  for (let i = 3; i <= 15; i += 3) {
+  for (let i = 4; i < 30; i += 5) {
     const row = checker.find((c) => c.grid.ri === i);
     const col = checker.find((c) => c.grid.ci === i);
     if (row) rows.push({ y: row.pos[1], ri: row.grid.ri });

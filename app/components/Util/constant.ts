@@ -4,6 +4,7 @@ export const GRID = 40;
 export const THRESHOLD = 35;
 export const DISPLAY_SIZE = 200; //이미지 크기
 export const CANVAS = GRID * 30;
+export const MG = GRID / 2;
 export const rows = CANVAS / GRID;
 export const cols = CANVAS / GRID;
 
