@@ -13,9 +13,8 @@ uniform vec2 uSegments[200];
 uniform int uSegmentCount;
 uniform vec2 uEndPoint;
 
-uniform vec2 uNear1[200];
-uniform vec2 uNear2[200];
-uniform int uNearCount;
+uniform vec2 uFreq[50];   // 최대 50개
+uniform int uFreqCount;
 
 // #include sdf.glsl
 // #include connections.glsl
@@ -28,7 +27,7 @@ void main() {
 
   vec3 col = vec3(1.0, 1.0, 1.0);
 
-  // col = drawContour(p, col);
+  col = drawContour(p, col);
   col = drawConnections(p, col);
   col = drawSensors(p, col);
   //col = drawDither(p, col); // 맨 마지막에 전체에 적용

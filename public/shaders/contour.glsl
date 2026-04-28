@@ -1,6 +1,11 @@
 float density(vec2 p) {
-  float dist = length(p - uEndPoint);
-  return 1.0 / (1.0 + dist * dist * 0.0001);
+  float d = 0.0;
+  for (int i = 0; i < 50; i++) {
+    if (i >= uFreqCount) break;
+    float dist = length(p - uFreq[i]);
+    d += 1.0 / (1.0 + dist * dist * 0.0001);
+  }
+  return d;
 }
 
 float manualFwidth(vec2 p) {
@@ -10,6 +15,8 @@ float manualFwidth(vec2 p) {
 }
 
 vec3 drawContour(vec2 p, vec3 col) {
+    if (uFreqCount <= 0) return col;
+
   float d = density(p);
   float fw = manualFwidth(p);
 

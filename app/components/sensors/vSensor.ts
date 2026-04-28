@@ -220,8 +220,8 @@ export function updateConnection(vSensor: VSensor[], freq: Frequency[]): [number
           const ep: [number, number] = [c.path[cur][0], c.path[cur][1]];
           vEnd = ep;
           const existing = freq.find((f) => f.pos[0] === ep[0] && f.pos[1] === ep[1]);
-          if (existing) existing.t = 60;
-          else freq.push({ pos: ep, t: 60 });
+          if (existing) existing.t = 5;
+          else freq.push({ pos: ep, t: 5 });
           endPoint = ep;
         }
       } else {
@@ -234,8 +234,8 @@ export function updateConnection(vSensor: VSensor[], freq: Frequency[]): [number
           const ep: [number, number] = [c.path[cur][0], c.path[cur][1]];
           vEnd = ep;
           const existing = freq.find((f) => f.pos[0] === ep[0] && f.pos[1] === ep[1]);
-          if (existing) existing.t = 60;
-          else freq.push({ pos: ep, t: 60 });
+          if (existing) existing.t = 5;
+          else freq.push({ pos: ep, t: 5 });
           endPoint = ep;
         }
       }

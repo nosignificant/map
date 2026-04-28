@@ -2,7 +2,7 @@ import p5 from "p5";
 import { CheckerGrid, Frequency, VSensor } from "./Util/types";
 import { GRID, CANVAS, TIME } from "./Util/constant";
 import { fullGrid, checkerboard } from "./drawings/checkerboard";
-import { initVSensor, snapToSensor, findNearCheck, findOtherSensor, updateVSensor, updateConnection } from "./sensors/vSensor";
+import { initVSensor, snapToSensor, findNearCheck, findOtherSensor, updateVSensor, updateConnection, updateFreq } from "./sensors/vSensor";
 import { computePos4Shader, shaderCobine } from "./Util/shaderUtil";
 import { drawFABRIK, initTentacle } from "./drawings/tentacles";
 
@@ -70,6 +70,7 @@ export function shaderSketch(container: HTMLElement) {
       updateVSensor(p, vSensor, checker, TIME);
 
       //연결점들 업데이트
+      updateFreq(freq, TIME);
       const [segFlat, endPoint] = updateConnection(vSensor, freq);
 
       // 100개 segment = vec2 200개 = float 400개로 패딩
@@ -78,21 +79,19 @@ export function shaderSketch(container: HTMLElement) {
       // sensor 상태 추출해서 쉐이더에 보내기
       const sensorT: number[] = [];
       const sensorClick: number[] = [];
-      const near1Flat: number[] = [];
-      const near2Flat: number[] = [];
+
+      const freqFlat: number[] = [];
+      for (const f of freq) {
+        if (freqFlat.length >= 100) break; // vec2 50개 = float 100개
+        freqFlat.push(f.pos[0], f.pos[1]);
+      }
+      const freqCount = freqFlat.length / 2;
+      while (freqFlat.length < 100) freqFlat.push(0); // 패딩
 
       for (const v of vSensor) {
         sensorT.push(v.t);
         sensorClick.push(v.clickCount);
-        for (const n of v.near) {
-          if (near1Flat.length >= 400) break;
-          if (near2Flat.length >= 400) break;
-
-          if (n.distStep == 1) near1Flat.push(n.checkerGrid.pos[0], n.checkerGrid.pos[1]);
-          if (n.distStep == 2) near2Flat.push(n.checkerGrid.pos[0], n.checkerGrid.pos[1]);
-        }
       }
-      while (near1Flat.length < 400) near1Flat.push(0);
 
       // 셰이더 실행
       p.shader(sketchShader);
@@ -105,8 +104,8 @@ export function shaderSketch(container: HTMLElement) {
       sketchShader.setUniform("uSensorCount", vSensor.length);
       sketchShader.setUniform("uSegments", segFlat.slice(0, 400));
       sketchShader.setUniform("uSegmentCount", segCount);
-      sketchShader.setUniform("uNear1", near1Flat);
-      sketchShader.setUniform("uNearCount", near1Flat.length / 2);
+      sketchShader.setUniform("uFreq", freqFlat);
+      sketchShader.setUniform("uFreqCount", freqCount);
       while (endPoint.length < 200) endPoint.push(0);
       sketchShader.setUniform("uEndPoint", [endPoint[0], endPoint[1]]);
       p.rect(-CANVAS / 2, -CANVAS / 2, CANVAS, CANVAS);

@@ -20,4 +20,4 @@ export const CORNER = [
 ];
 export const TIME = 0.1;
 
-export const SPEED = 0.1;
+export const SPEED = 0.2;
