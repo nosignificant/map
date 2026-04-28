@@ -4,7 +4,6 @@
 // 실제 로직은 sketch.ts / edgeDetection.ts / types.ts 에 있음
 import { useEffect, useRef } from "react";
 import type p5 from "p5";
-import { createSketch } from "./sketch";
 import { SVGsketch } from "./SVGtest";
 import { shaderSketch } from "./shaderTest";
 //monobehaviour
@@ -23,7 +22,7 @@ export default function P5Sketch() {
       if (cancelled) return;
       //클래스를 꺼내야 new GameObject 이렇게 쓸 수 있대
       const P5 = mod.default;
-      sketch = SVGsketch(containerRef.current!);
+      sketch = shaderSketch(containerRef.current!);
     });
 
     return () => {

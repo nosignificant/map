@@ -1,33 +1,6 @@
 import type p5 from "p5";
-import { ImgSet } from "../Util/types";
 import { GRID } from "../Util/constant";
 import { dilate } from "../Util/edgeAndCorner";
-
-//이미지 외곽 그리기
-export function drawOutline(p: p5, set: ImgSet[], occupied: boolean[][]) {
-  p.fill(0);
-  p.noStroke();
-
-  for (const img of set) {
-    const offsetMap = img.edgeResult.outline;
-
-    for (const pl of img.PlacedImage) {
-      for (let ri = 0; ri < offsetMap.length; ri++) {
-        for (let ci = 0; ci < offsetMap[0].length; ci++) {
-          if (!offsetMap[ri][ci]) continue; // 테두리 셀만
-
-          const cellX = pl.pos.x + (ci - 1) * GRID;
-          const cellY = pl.pos.y + (ri - 1) * GRID;
-
-          const outRow = Math.floor(cellY / GRID);
-          const outCol = Math.floor(cellX / GRID);
-          if (occupied[outRow]?.[outCol]) continue;
-          //drawCircleCross(p, cellX, cellY);
-        }
-      }
-    }
-  }
-}
 
 //occupied 된거 +1 해서 그리기
 export function drawOffsetOccupied(p: p5, src: boolean[][]) {

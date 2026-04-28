@@ -24,6 +24,7 @@ export function initVSensor(checker: CheckerGrid[]): VSensor[] {
         clickCount: 0,
         t: 60,
         connect: [],
+        tentacles: [],
       });
     }
   }
@@ -33,21 +34,27 @@ export function initVSensor(checker: CheckerGrid[]): VSensor[] {
 //update//
 //update//
 //update//
-export function updateVSensor(p: p5, src: VSensor[], checker: CheckerGrid[], t: number) {
-  for (const c of src) {
-    if (c.clickCount > 0) {
-      for (const n of c.near) {
-        if (n.distStep === 1) drawCircleCross(p, n.checkerGrid.pos[0], n.checkerGrid.pos[1], GRID);
-        if (c.clickCount >= 2 && n.distStep === 2) drawTwoCircle(p, n.checkerGrid.pos[0], n.checkerGrid.pos[1], GRID);
+export function updateVSensor(p: p5, vSensors: VSensor[], checker: CheckerGrid[], time: number) {
+  for (const v of vSensors) {
+    if (v.clickCount > 0) {
+      //for (const n of c.near) {
+      //if (n.distStep === 1) drawCircleCross(p, n.checkerGrid.pos[0], n.checkerGrid.pos[1], GRID);
+      //if (c.clickCount >= 2 && n.distStep === 2) drawTwoCircle(p, n.checkerGrid.pos[0], n.checkerGrid.pos[1], GRID);
+      //}
+      v.t -= time;
+      //현재 클릭카운트보다 원 반경 / grid(clickCount)가 작아지면
+      //시작하고 바로나서는 grid * clickcount - time 상태니까 바로 0이됨
+      if (v.t / GRID <= v.clickCount - 1) {
+        if (v.t <= 0) {
+          v.clickCount--;
+        }
       }
-      c.t -= t;
-      c.clickCount = Math.floor(c.t / 60) + 1;
     }
   }
 }
 
 export function snapToSensor(p: p5, src: VSensor[]): VSensor {
-  let closest: VSensor = { checkerGrid: { grid: { ri: 0, ci: 0 }, pos: [0, 0] }, near: [], clickCount: 0, t: 0, connect: [] };
+  let closest: VSensor = { checkerGrid: { grid: { ri: 0, ci: 0 }, pos: [0, 0] }, near: [], clickCount: 0, t: 0, connect: [], tentacles: [] };
   let minDist: number = Infinity;
   for (const c of src) {
     const [x, y] = c.checkerGrid.pos;
@@ -102,7 +109,7 @@ export function findOtherSensor(p: p5, me: VSensor, src: VSensor[], checker: Che
           const [x, y] = n.checkerGrid.pos;
           const [ox, oy] = otherN.checkerGrid.pos;
           const d = p.dist(x, y, ox, oy);
-          const prob = Math.max(0, 1 - d / threshold) ** 5;
+          const prob = Math.max(0, 1 - d / threshold) ** 8;
           const wantConnectCheck = Math.random() < prob;
           if (wantConnectCheck) {
             const contained = connect.find((c) => c.p1[0] === x && c.p1[1] === y);
@@ -175,4 +182,42 @@ export function drawConnections(p: p5, src: Connect[], checker: CheckerGrid[]) {
     drawCircleCross(p, sx, sy, GRID / 2);
     drawCircleCross(p, ex, ey, GRID / 2);
   }
+}
+
+export function updateConnection(vSensor: VSensor[]): [number[], [number, number]] {
+  const segFlat: number[] = [];
+  const endPoint: [number, number] = [0, 0];
+  for (const v of vSensor) {
+    for (const c of v.connect) {
+      if (c.path.length === 0) continue;
+
+      const maxT = c.path.length * TIME;
+      const waitForShrink = TIME * 5;
+      //쿨다운 + 최대 시간이 지나면 축소됨으로 변경
+      if (!c.shrinking && c.t >= maxT + waitForShrink) c.shrinking = true;
+      c.t += c.shrinking ? -TIME : TIME;
+
+      const drawCount = Math.floor(c.t / TIME);
+
+      if (c.shrinking) {
+        // 현재 인덱스
+        const cur = Math.min(drawCount, c.path.length - 1);
+        for (let i = 0; i < cur; i++) {
+          if (segFlat.length >= 400) break;
+          segFlat.push(c.path[i][0], c.path[i][1], c.path[i + 1][0], c.path[i + 1][1]);
+        }
+        if (cur > 0) endPoint.push(c.path[cur][0], c.path[cur][1]);
+      } else {
+        const cur = Math.max(0, c.path.length - 1 - drawCount);
+        for (let i = cur; i < c.path.length - 1; i++) {
+          if (segFlat.length >= 400) break;
+          segFlat.push(c.path[i][0], c.path[i][1], c.path[i + 1][0], c.path[i + 1][1]);
+        }
+        if (cur < c.path.length) endPoint.push(c.path[cur][0], c.path[cur][1]);
+      }
+    }
+  }
+  while (segFlat.length < 400) segFlat.push(0);
+
+  return [segFlat, endPoint];
 }

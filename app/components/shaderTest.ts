@@ -2,7 +2,9 @@ import p5 from "p5";
 import { CheckerGrid, VSensor } from "./Util/types";
 import { GRID, CANVAS, TIME } from "./Util/constant";
 import { fullGrid, checkerboard } from "./drawings/checkerboard";
-import { initVSensor, snapToSensor, findNearCheck, findOtherSensor } from "./sensors/vSensor";
+import { initVSensor, snapToSensor, findNearCheck, findOtherSensor, updateVSensor, updateConnection } from "./sensors/vSensor";
+import { computePos4Shader, shaderCobine } from "./Util/shaderUtil";
+import { drawFABRIK, initTentacle } from "./drawings/tentacles";
 
 export function shaderSketch(container: HTMLElement) {
   let fg: CheckerGrid[];
@@ -10,105 +12,133 @@ export function shaderSketch(container: HTMLElement) {
   let vSensor: VSensor[];
   let sketchShader: p5.Shader;
   let noiseTex: p5.Image;
+  const units: p5.Image[] = [];
   const sensorPos: number[] = [];
 
   const myP = new p5((p: p5) => {
+    //SETUP//
+    //SETUP//
+    //SETUP//
+    //SETUP//
     p.setup = async () => {
       p.createCanvas(CANVAS, CANVAS, p.WEBGL);
       p.pixelDensity(1);
 
+      // checker init
       checker = checkerboard();
       fg = fullGrid();
+
+      // vsensor init
       vSensor = initVSensor(fg);
-      for (const v of vSensor) sensorPos.push(v.checkerGrid.pos[0], v.checkerGrid.pos[1]);
+
+      for (const v of vSensor) {
+        //tentacle init
+        const r = Math.floor(Math.random() * (6 - 2 + 1)) + 2;
+        v.tentacles = initTentacle(v, r, 100, 6);
+        console.log(v.tentacles);
+        sensorPos.push(v.checkerGrid.pos[0], v.checkerGrid.pos[1]);
+      }
       while (sensorPos.length < 50) sensorPos.push(0);
 
       noiseTex = await p.loadImage("/img/noiseTex.png");
 
-      const vertSrc = await fetch("/shaders/sketch.vert").then((r) => r.text());
-      const fragSrc = await fetch("/shaders/sketch.frag").then((r) => r.text());
-      sketchShader = p.createShader(vertSrc, fragSrc);
+      //img init
+      fetch("/api/img")
+        .then((res) => res.json())
+        .then((urls: string[]) => {
+          urls.forEach((url) => {
+            p.loadImage(url, (loadedImg) => {
+              units.push(loadedImg);
+            });
+          });
+        });
+
+      //shader init
+      const s = await shaderCobine();
+      sketchShader = p.createShader(s.vertSrc, s.fragCombined);
     };
 
+    //DRAW//
+    //DRAW//
+    //DRAW//
+    //DRAW//
     p.draw = () => {
       if (!checker || !vSensor || !sketchShader || !noiseTex) return;
 
       // vSensor 상태 업데이트
-      for (const v of vSensor) {
-        if (v.clickCount > 0) {
-          v.t -= TIME;
-          if (v.t <= 0) {
-            v.clickCount--;
-          }
-        }
-      }
+      updateVSensor(p, vSensor, checker, TIME);
 
-      // connection 선분 추출 (최대 100개)
-      const segFlat: number[] = [];
-      for (const v of vSensor) {
-        for (const c of v.connect) {
-          if (c.path.length === 0) continue;
-
-          const maxT = c.path.length * TIME;
-          if (!c.shrinking && c.t >= maxT + TIME * 5) c.shrinking = true;
-          c.t += c.shrinking ? -TIME : TIME;
-
-          const drawCount = Math.floor(c.t / TIME);
-
-          if (c.shrinking) {
-            const cur = Math.min(drawCount, c.path.length - 1);
-            for (let i = 0; i < cur; i++) {
-              if (segFlat.length >= 400) break;
-              segFlat.push(c.path[i][0], c.path[i][1], c.path[i + 1][0], c.path[i + 1][1]);
-            }
-          } else {
-            const cur = Math.max(0, c.path.length - 1 - drawCount);
-            for (let i = cur; i < c.path.length - 1; i++) {
-              if (segFlat.length >= 400) break;
-              segFlat.push(c.path[i][0], c.path[i][1], c.path[i + 1][0], c.path[i + 1][1]);
-            }
-          }
-        }
-      }
+      //연결점들 업데이트
+      const [segFlat, endPoint] = updateConnection(vSensor);
 
       // 100개 segment = vec2 200개 = float 400개로 패딩
-      while (segFlat.length < 400) segFlat.push(0);
       const segCount = Math.min(segFlat.length / 4, 100);
 
-      // sensor 상태 추출 (매 프레임)
+      // sensor 상태 추출해서 쉐이더에 보내기
       const sensorT: number[] = [];
       const sensorClick: number[] = [];
-      const nearFlat: number[] = [];
+      const near1Flat: number[] = [];
+      const near2Flat: number[] = [];
+
       for (const v of vSensor) {
         sensorT.push(v.t);
         sensorClick.push(v.clickCount);
         for (const n of v.near) {
-          if (nearFlat.length >= 400) break;
-          nearFlat.push(n.checkerGrid.pos[0], n.checkerGrid.pos[1]);
+          if (near1Flat.length >= 400) break;
+          if (near2Flat.length >= 400) break;
+
+          if (n.distStep == 1) near1Flat.push(n.checkerGrid.pos[0], n.checkerGrid.pos[1]);
+          if (n.distStep == 2) near2Flat.push(n.checkerGrid.pos[0], n.checkerGrid.pos[1]);
         }
       }
-      while (nearFlat.length < 400) nearFlat.push(0);
+      while (near1Flat.length < 400) near1Flat.push(0);
 
       // 셰이더 실행
       p.shader(sketchShader);
       sketchShader.setUniform("uResolution", [CANVAS, CANVAS]);
       sketchShader.setUniform("uGrid", GRID);
       sketchShader.setUniform("uNoise", noiseTex);
-      sketchShader.setUniform("uSensorPos", sensorPos.slice(0, 50));
+      sketchShader.setUniform("uSensorPos", sensorPos);
       sketchShader.setUniform("uSensorT", sensorT.slice(0, 25));
       sketchShader.setUniform("uSensorClick", sensorClick.slice(0, 25));
       sketchShader.setUniform("uSensorCount", vSensor.length);
       sketchShader.setUniform("uSegments", segFlat.slice(0, 400));
       sketchShader.setUniform("uSegmentCount", segCount);
-      sketchShader.setUniform("uNear", nearFlat);
-      sketchShader.setUniform("uNearCount", nearFlat.length / 2);
-
+      sketchShader.setUniform("uNear1", near1Flat);
+      sketchShader.setUniform("uNearCount", near1Flat.length / 2);
+      while (endPoint.length < 200) endPoint.push(0);
+      sketchShader.setUniform("uEndPoint", [endPoint[0], endPoint[1]]);
       p.rect(-CANVAS / 2, -CANVAS / 2, CANVAS, CANVAS);
+
+      if (units[0]) {
+        p.resetShader();
+        for (const v of vSensor) {
+          for (const n of v.near) {
+            if (n.distStep === 1) {
+              const [x, y] = computePos4Shader(n.checkerGrid.pos);
+              p.image(units[0], x - GRID / 2, y - GRID / 2, GRID, GRID);
+            }
+          }
+        }
+      }
+      p.resetShader();
+      for (const v of vSensor) {
+        for (const t of v.tentacles) {
+          drawFABRIK(p, t, TIME);
+        }
+      }
     };
 
+    //EVENT//
+    //EVENT//
+    //EVENT//
+    //EVENT//
     p.mouseClicked = () => {
       if (!checker || !vSensor) return;
+
       const closest = snapToSensor(p, vSensor);
+      console.log("closest:", closest.checkerGrid.pos);
+      console.log("near:", closest.near);
       closest.near = findNearCheck(p, closest, checker);
       closest.clickCount++;
       closest.t = GRID * closest.clickCount;
