@@ -1,7 +1,7 @@
 import type p5 from "p5";
-import { CheckerGrid, VSensor, CheckerDistStep, Connect } from "../Util/types";
-import { GRID, TIME } from "../Util/constant";
-import { drawCircleCross, drawTwoCircle } from "../drawings/drawings";
+import { CheckerGrid, VSensor, CheckerDistStep, Connect, Frequency } from "../Util/types";
+import { GRID, TIME, SPEED } from "../Util/constant";
+import { drawCircleCross } from "../drawings/drawings";
 import { findPath } from "../Util/BFS";
 
 export function initVSensor(checker: CheckerGrid[]): VSensor[] {
@@ -25,6 +25,7 @@ export function initVSensor(checker: CheckerGrid[]): VSensor[] {
         t: 60,
         connect: [],
         tentacles: [],
+        tenTarget: null,
       });
     }
   }
@@ -54,7 +55,15 @@ export function updateVSensor(p: p5, vSensors: VSensor[], checker: CheckerGrid[]
 }
 
 export function snapToSensor(p: p5, src: VSensor[]): VSensor {
-  let closest: VSensor = { checkerGrid: { grid: { ri: 0, ci: 0 }, pos: [0, 0] }, near: [], clickCount: 0, t: 0, connect: [], tentacles: [] };
+  let closest: VSensor = {
+    checkerGrid: { grid: { ri: 0, ci: 0 }, pos: [0, 0] },
+    near: [],
+    clickCount: 0,
+    t: 0,
+    connect: [],
+    tentacles: [],
+    tenTarget: null,
+  };
   let minDist: number = Infinity;
   for (const c of src) {
     const [x, y] = c.checkerGrid.pos;
@@ -184,10 +193,11 @@ export function drawConnections(p: p5, src: Connect[], checker: CheckerGrid[]) {
   }
 }
 
-export function updateConnection(vSensor: VSensor[]): [number[], [number, number]] {
+export function updateConnection(vSensor: VSensor[], freq: Frequency[]): [number[], [number, number]] {
   const segFlat: number[] = [];
-  const endPoint: [number, number] = [0, 0];
+  let endPoint: [number, number] = [0, 0];
   for (const v of vSensor) {
+    let vEnd: [number, number] | null = null;
     for (const c of v.connect) {
       if (c.path.length === 0) continue;
 
@@ -195,7 +205,7 @@ export function updateConnection(vSensor: VSensor[]): [number[], [number, number
       const waitForShrink = TIME * 5;
       //쿨다운 + 최대 시간이 지나면 축소됨으로 변경
       if (!c.shrinking && c.t >= maxT + waitForShrink) c.shrinking = true;
-      c.t += c.shrinking ? -TIME : TIME;
+      c.t += (c.shrinking ? -TIME : TIME) * SPEED;
 
       const drawCount = Math.floor(c.t / TIME);
 
@@ -206,18 +216,44 @@ export function updateConnection(vSensor: VSensor[]): [number[], [number, number
           if (segFlat.length >= 400) break;
           segFlat.push(c.path[i][0], c.path[i][1], c.path[i + 1][0], c.path[i + 1][1]);
         }
-        if (cur > 0) endPoint.push(c.path[cur][0], c.path[cur][1]);
+        if (cur > 0) {
+          const ep: [number, number] = [c.path[cur][0], c.path[cur][1]];
+          vEnd = ep;
+          const existing = freq.find((f) => f.pos[0] === ep[0] && f.pos[1] === ep[1]);
+          if (existing) existing.t = 60;
+          else freq.push({ pos: ep, t: 60 });
+          endPoint = ep;
+        }
       } else {
         const cur = Math.max(0, c.path.length - 1 - drawCount);
         for (let i = cur; i < c.path.length - 1; i++) {
           if (segFlat.length >= 400) break;
           segFlat.push(c.path[i][0], c.path[i][1], c.path[i + 1][0], c.path[i + 1][1]);
         }
-        if (cur < c.path.length) endPoint.push(c.path[cur][0], c.path[cur][1]);
+        if (cur < c.path.length) {
+          const ep: [number, number] = [c.path[cur][0], c.path[cur][1]];
+          vEnd = ep;
+          const existing = freq.find((f) => f.pos[0] === ep[0] && f.pos[1] === ep[1]);
+          if (existing) existing.t = 60;
+          else freq.push({ pos: ep, t: 60 });
+          endPoint = ep;
+        }
       }
+    }
+
+    // 이 vSensor의 tentacle들에 target 세팅
+    for (const t of v.tentacles) {
+      t.target = vEnd ? [vEnd[0], vEnd[1]] : null;
     }
   }
   while (segFlat.length < 400) segFlat.push(0);
 
   return [segFlat, endPoint];
+}
+
+export function updateFreq(freq: Frequency[], t: number) {
+  for (let i = freq.length - 1; i >= 0; i--) {
+    freq[i].t -= t;
+    if (freq[i].t <= 0) freq.splice(i, 1);
+  }
 }

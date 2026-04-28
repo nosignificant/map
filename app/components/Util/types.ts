@@ -25,6 +25,7 @@ export type VSensor = {
   t: number;
   connect: Connect[];
   tentacles: Tentacle[];
+  tenTarget: [number, number] | null;
 };
 
 //T sensor images
@@ -53,4 +54,9 @@ export type Tentacle = {
   t: number;
   angle: number;
   isFollowing: boolean;
+};
+
+export type Frequency = {
+  pos: [number, number];
+  t: number;
 };

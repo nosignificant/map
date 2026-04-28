@@ -19,3 +19,5 @@ export const CORNER = [
   [CANVAS, CANVAS],
 ];
 export const TIME = 0.1;
+
+export const SPEED = 0.1;

@@ -1,5 +1,5 @@
 import p5 from "p5";
-import { CheckerGrid, VSensor } from "./Util/types";
+import { CheckerGrid, Frequency, VSensor } from "./Util/types";
 import { GRID, CANVAS, TIME } from "./Util/constant";
 import { fullGrid, checkerboard } from "./drawings/checkerboard";
 import { initVSensor, snapToSensor, findNearCheck, findOtherSensor, updateVSensor, updateConnection } from "./sensors/vSensor";
@@ -14,6 +14,7 @@ export function shaderSketch(container: HTMLElement) {
   let noiseTex: p5.Image;
   const units: p5.Image[] = [];
   const sensorPos: number[] = [];
+  const freq: Frequency[] = [];
 
   const myP = new p5((p: p5) => {
     //SETUP//
@@ -33,7 +34,7 @@ export function shaderSketch(container: HTMLElement) {
 
       for (const v of vSensor) {
         //tentacle init
-        const r = Math.floor(Math.random() * (6 - 2 + 1)) + 2;
+        const r = Math.floor(Math.random() * (4 - 2 + 1)) + 1;
         v.tentacles = initTentacle(v, r, 100, 6);
         console.log(v.tentacles);
         sensorPos.push(v.checkerGrid.pos[0], v.checkerGrid.pos[1]);
@@ -69,7 +70,7 @@ export function shaderSketch(container: HTMLElement) {
       updateVSensor(p, vSensor, checker, TIME);
 
       //연결점들 업데이트
-      const [segFlat, endPoint] = updateConnection(vSensor);
+      const [segFlat, endPoint] = updateConnection(vSensor, freq);
 
       // 100개 segment = vec2 200개 = float 400개로 패딩
       const segCount = Math.min(segFlat.length / 4, 100);
