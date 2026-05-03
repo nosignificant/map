@@ -30,3 +30,24 @@ vec3 drawConnections(vec2 p, vec3 col) {
 
   return col;
 }
+
+vec3 drawBigCircle(vec2 p, vec3 col) {
+  vec2 gridP = floor(p / uGrid + 0.5) * uGrid;
+  
+  // 촉수 위치 근처인지 체크
+  bool occupied = false;
+  for (int i = 0; i < 200; i++) {
+    if (i >= uTenCount) break;
+    if (length(gridP - uTenOccupied[i]) < uGrid * 0.5) {
+      occupied = true;
+      break;
+    }
+  }
+  
+  if (!occupied) {
+    float r = ring(p, gridP, uGrid * 0.4, 1.0);
+    col = mix(col, vec3(0.0), r);
+  }
+  
+  return col;
+}

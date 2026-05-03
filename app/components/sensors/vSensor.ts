@@ -193,9 +193,23 @@ export function drawConnections(p: p5, src: Connect[], checker: CheckerGrid[]) {
   }
 }
 
-export function updateConnection(vSensor: VSensor[], freq: Frequency[]): [number[], [number, number]] {
+export function updateConnection(vSensor: VSensor[], fg?: CheckerGrid[]): [number[], [number, number]] {
   const segFlat: number[] = [];
   let endPoint: [number, number] = [0, 0];
+
+  // 반경 내 fg 격자점 중 랜덤 선택 (target 없을 때 사용)
+  function findRandomFgPoint(me: VSensor): [number, number] | null {
+    if (!fg || fg.length === 0) return null;
+    const threshold = GRID * 8; // 8칸 이내
+    const candidates: [number, number][] = [];
+    for (const f of fg) {
+      const d = Math.hypot(me.checkerGrid.pos[0] - f.pos[0], me.checkerGrid.pos[1] - f.pos[1]);
+      if (d > GRID && d < threshold) candidates.push(f.pos);
+    }
+    if (candidates.length === 0) return null;
+    return candidates[Math.floor(Math.random() * candidates.length)];
+  }
+
   for (const v of vSensor) {
     let vEnd: [number, number] | null = null;
     for (const c of v.connect) {
@@ -219,9 +233,6 @@ export function updateConnection(vSensor: VSensor[], freq: Frequency[]): [number
         if (cur > 0) {
           const ep: [number, number] = [c.path[cur][0], c.path[cur][1]];
           vEnd = ep;
-          const existing = freq.find((f) => f.pos[0] === ep[0] && f.pos[1] === ep[1]);
-          if (existing) existing.t = 5;
-          else freq.push({ pos: ep, t: 5 });
           endPoint = ep;
         }
       } else {
@@ -233,17 +244,24 @@ export function updateConnection(vSensor: VSensor[], freq: Frequency[]): [number
         if (cur < c.path.length) {
           const ep: [number, number] = [c.path[cur][0], c.path[cur][1]];
           vEnd = ep;
-          const existing = freq.find((f) => f.pos[0] === ep[0] && f.pos[1] === ep[1]);
-          if (existing) existing.t = 5;
-          else freq.push({ pos: ep, t: 5 });
           endPoint = ep;
         }
       }
     }
 
     // 이 vSensor의 tentacle들에 target 세팅
+    // vEnd 없으면 각 tentacle마다 다른 fg 격자점 선택
     for (const t of v.tentacles) {
-      t.target = vEnd ? [vEnd[0], vEnd[1]] : null;
+      if (vEnd) {
+        t.target = [vEnd[0], vEnd[1]];
+      } else {
+        // target이 이미 있으면 유지, 없거나 가끔 새로 선택
+        const needNewTarget = !t.target || Math.random() < 0.005; // 0.5% 확률로 변경
+        if (needNewTarget) {
+          const fgPoint = findRandomFgPoint(v);
+          t.target = fgPoint ? [fgPoint[0], fgPoint[1]] : null;
+        }
+      }
     }
   }
   while (segFlat.length < 400) segFlat.push(0);

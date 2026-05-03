@@ -44,3 +44,16 @@ export function draw5x5(p: p5, clicks: VSensor[]) {
   for (const x of xs) p.line(x, 0, x, CANVAS);
   for (const y of ys) p.line(0, y, CANVAS, y);
 }
+
+export function snapToCheck(pos: [number, number], fg: CheckerGrid[]): [number, number] {
+  let closest: [number, number] = [0, 0];
+  let minDist = Infinity;
+  for (const f of fg) {
+    const d = Math.hypot(pos[0] - f.pos[0], pos[1] - f.pos[1]);
+    if (d < minDist) {
+      minDist = d;
+      closest = f.pos;
+    }
+  }
+  return closest;
+}

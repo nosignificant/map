@@ -54,6 +54,9 @@ export type Tentacle = {
   t: number;
   angle: number;
   isFollowing: boolean;
+  speed: number;
+  phase: number;
+  curveBias: number; // baseline 휨 정도 (양수=한쪽, 음수=반대쪽)
 };
 
 export type Frequency = {

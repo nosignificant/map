@@ -1,10 +1,11 @@
 import p5 from "p5";
-import { CheckerGrid, Frequency, VSensor } from "./Util/types";
+import { CheckerGrid, VSensor } from "./Util/types";
 import { GRID, CANVAS, TIME } from "./Util/constant";
 import { fullGrid, checkerboard } from "./drawings/checkerboard";
-import { initVSensor, snapToSensor, findNearCheck, findOtherSensor, updateVSensor, updateConnection, updateFreq } from "./sensors/vSensor";
+import { initVSensor, snapToSensor, findNearCheck, findOtherSensor, updateVSensor, updateConnection } from "./sensors/vSensor";
 import { computePos4Shader, shaderCobine } from "./Util/shaderUtil";
-import { drawFABRIK, initTentacle } from "./drawings/tentacles";
+import { drawFABRIK, initTentacle, tenOccupied } from "./drawings/tentacles";
+import { buildTree, updateTree, drawTree, TreeSeg } from "./drawings/growTree";
 
 export function shaderSketch(container: HTMLElement) {
   let fg: CheckerGrid[];
@@ -14,7 +15,10 @@ export function shaderSketch(container: HTMLElement) {
   let noiseTex: p5.Image;
   const units: p5.Image[] = [];
   const sensorPos: number[] = [];
-  const freq: Frequency[] = [];
+
+  let tOccupied: [number, number][] = [];
+  const endPointTrail: [number, number][] = [];
+  let trees: TreeSeg[] = [];
 
   const myP = new p5((p: p5) => {
     //SETUP//
@@ -33,8 +37,8 @@ export function shaderSketch(container: HTMLElement) {
       vSensor = initVSensor(fg);
 
       for (const v of vSensor) {
-        //tentacle init
-        const r = Math.floor(Math.random() * (4 - 2 + 1)) + 1;
+        //tentacle init (1~2개)
+        const r = Math.floor(Math.random() * 2) + 1;
         v.tentacles = initTentacle(v, r, 100, 6);
         console.log(v.tentacles);
         sensorPos.push(v.checkerGrid.pos[0], v.checkerGrid.pos[1]);
@@ -42,6 +46,16 @@ export function shaderSketch(container: HTMLElement) {
       while (sensorPos.length < 50) sensorPos.push(0);
 
       noiseTex = await p.loadImage("/img/noiseTex.png");
+
+      // tree init - 시드 위치 몇 개 지정해서 자유 각도 트리 생성
+      const seeds: [number, number][] = [
+        [GRID * 2, 0],
+        [GRID * 14, 0],
+        [GRID * 26, 0],
+      ];
+      for (const seed of seeds) {
+        trees = trees.concat(buildTree(seed, 6, GRID * 2.5, 8)); // 2 = 북쪽(위), depth 8
+      }
 
       //img init
       fetch("/api/img")
@@ -69,24 +83,20 @@ export function shaderSketch(container: HTMLElement) {
       // vSensor 상태 업데이트
       updateVSensor(p, vSensor, checker, TIME);
 
-      //연결점들 업데이트
-      updateFreq(freq, TIME);
-      const [segFlat, endPoint] = updateConnection(vSensor, freq);
+      //연결점들 , segment float로 분리
+      const [segFlat, endPoint] = updateConnection(vSensor, fg);
+      tOccupied = tenOccupied(fg, vSensor);
 
       // 100개 segment = vec2 200개 = float 400개로 패딩
       const segCount = Math.min(segFlat.length / 4, 100);
 
+      // 중복 제거
+      const tenUnique = tOccupied.filter((pos, i) => tOccupied.findIndex((p) => p[0] === pos[0] && p[1] === pos[1]) === i);
+      const tenFlat = tenUnique.flatMap(([x, y]) => [x, y]);
+
       // sensor 상태 추출해서 쉐이더에 보내기
       const sensorT: number[] = [];
       const sensorClick: number[] = [];
-
-      const freqFlat: number[] = [];
-      for (const f of freq) {
-        if (freqFlat.length >= 100) break; // vec2 50개 = float 100개
-        freqFlat.push(f.pos[0], f.pos[1]);
-      }
-      const freqCount = freqFlat.length / 2;
-      while (freqFlat.length < 100) freqFlat.push(0); // 패딩
 
       for (const v of vSensor) {
         sensorT.push(v.t);
@@ -95,19 +105,40 @@ export function shaderSketch(container: HTMLElement) {
 
       // 셰이더 실행
       p.shader(sketchShader);
+      //해상도
       sketchShader.setUniform("uResolution", [CANVAS, CANVAS]);
+      //한 칸당 크기
       sketchShader.setUniform("uGrid", GRID);
+      //텍스처
       sketchShader.setUniform("uNoise", noiseTex);
+      //센서 위치, 센서 시간
       sketchShader.setUniform("uSensorPos", sensorPos);
       sketchShader.setUniform("uSensorT", sensorT.slice(0, 25));
+      //클릭 - 반응 횟수
       sketchShader.setUniform("uSensorClick", sensorClick.slice(0, 25));
+      //센서 개수
       sketchShader.setUniform("uSensorCount", vSensor.length);
-      sketchShader.setUniform("uSegments", segFlat.slice(0, 400));
-      sketchShader.setUniform("uSegmentCount", segCount);
-      sketchShader.setUniform("uFreq", freqFlat);
-      sketchShader.setUniform("uFreqCount", freqCount);
-      while (endPoint.length < 200) endPoint.push(0);
+      //그려야 하는 선 개수
+      sketchShader.setUniform("uSegments", segFlat.slice(0, 200)); // vec2 100개
+      sketchShader.setUniform("uSegmentCount", Math.min(segFlat.length / 4, 100));
+      //신호 보내는 점 위치
+      while (endPoint.length < 2) endPoint.push(0);
       sketchShader.setUniform("uEndPoint", [endPoint[0], endPoint[1]]);
+
+      //나머지 - 촉수 없는 위치 점
+      sketchShader.setUniform("uTenOccupied", tenFlat.slice(0, 400)); // vec2 200개
+      sketchShader.setUniform("uTenCount", Math.min(tenUnique.length, 200));
+
+      // trail
+      if (endPoint[0] !== 0 || endPoint[1] !== 0) {
+        endPointTrail.unshift([endPoint[0], endPoint[1]]);
+        if (endPointTrail.length > 50) endPointTrail.pop();
+      }
+      const trailFlat = endPointTrail.flatMap(([x, y]) => [x, y]);
+      while (trailFlat.length < 100) trailFlat.push(0);
+      sketchShader.setUniform("uTrail", trailFlat.slice(0, 100));
+      sketchShader.setUniform("uTrailCount", endPointTrail.length);
+
       p.rect(-CANVAS / 2, -CANVAS / 2, CANVAS, CANVAS);
 
       if (units[0]) {
@@ -122,9 +153,14 @@ export function shaderSketch(container: HTMLElement) {
         }
       }
       p.resetShader();
+
+      // tree 업데이트 + 그리기 (occupied 침범하면 후퇴, 사라지면 재성장)
+      updateTree(trees, tOccupied, 0.04, 0.08);
+      drawTree(p, trees, 7);
+
       for (const v of vSensor) {
         for (const t of v.tentacles) {
-          drawFABRIK(p, t, TIME);
+          drawFABRIK(p, t, TIME, endPoint);
         }
       }
     };
