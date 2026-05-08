@@ -1,3 +1,5 @@
+import p5 from "p5";
+
 export type Pos = { x: number; y: number };
 export type Grid = { ci: number; ri: number };
 
@@ -26,14 +28,14 @@ export type VSensor = {
   connect: Connect[];
   tentacles: Tentacle[];
   tenTarget: [number, number] | null;
+  strength: number;
 };
 
 //T sensor images
 export type CheckerDistStep = {
-  checkerGrid: CheckerGrid;
-  distStep: number;
+  pos: [number, number][];
+  image: p5.Image;
 };
-
 export type Connect = {
   p1: [number, number];
   p2: [number, number];
@@ -57,9 +59,4 @@ export type Tentacle = {
   speed: number;
   phase: number;
   curveBias: number; // baseline 휨 정도 (양수=한쪽, 음수=반대쪽)
-};
-
-export type Frequency = {
-  pos: [number, number];
-  t: number;
 };

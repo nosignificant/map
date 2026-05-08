@@ -1,5 +1,5 @@
 import type p5 from "p5";
-import { CheckerGrid, VSensor, CheckerDistStep, Connect, Frequency } from "../Util/types";
+import { CheckerGrid, VSensor, CheckerDistStep, Connect } from "../Util/types";
 import { GRID, TIME, SPEED } from "../Util/constant";
 import { drawCircleCross } from "../drawings/drawings";
 import { findPath } from "../Util/BFS";
@@ -26,6 +26,7 @@ export function initVSensor(checker: CheckerGrid[]): VSensor[] {
         connect: [],
         tentacles: [],
         tenTarget: null,
+        strength: 0,
       });
     }
   }
@@ -63,6 +64,7 @@ export function snapToSensor(p: p5, src: VSensor[]): VSensor {
     connect: [],
     tentacles: [],
     tenTarget: null,
+    strength: 0,
   };
   let minDist: number = Infinity;
   for (const c of src) {
@@ -76,13 +78,20 @@ export function snapToSensor(p: p5, src: VSensor[]): VSensor {
   return closest;
 }
 
-export function findNearCheck(p: p5, point: VSensor, src: CheckerGrid[]): CheckerDistStep[] {
+//순비 이미지 그리기
+export function updateDistStep(vSensor: VSensor[], units: p5.Image[]) {
   const near: CheckerDistStep[] = [];
-  for (const c of src) {
-    const [x, y] = c.pos;
-    const d = p.dist(point.checkerGrid.pos[0], point.checkerGrid.pos[1], x, y);
-    if (d <= GRID) near.push({ checkerGrid: c, distStep: 1 });
-    if (d > GRID && d <= GRID * 3) near.push({ checkerGrid: c, distStep: 2 });
+
+  if (units.length === 0) return near; // 이미지 로드 전이면 스킵
+
+  for (const v of vSensor) {
+    const [x, y] = v.checkerGrid.pos;
+
+    if (v.strength <= 0) continue; // 신호 없으면 스킵
+
+    if (v.strength >= 100 && units[0]) near.push({ pos: [[x, y]], image: units[0] });
+    if (v.strength >= 200 && units[1]) near.push({ pos: [[x, y]], image: units[1] });
+    if (v.strength >= 300 && units[2]) near.push({ pos: [[x - GRID, y - GRID]], image: units[2] });
   }
   return near;
 }
@@ -113,10 +122,9 @@ export function findOtherSensor(p: p5, me: VSensor, src: VSensor[], checker: Che
       //다른 진동센서의 반경 안에 연결될 위치 선택
       for (const n of me.near) {
         for (const otherN of other.near) {
-          if (n.distStep !== me.clickCount) continue;
-          if (otherN.distStep !== other.clickCount) continue;
-          const [x, y] = n.checkerGrid.pos;
-          const [ox, oy] = otherN.checkerGrid.pos;
+          const r = Math.random() * n.pos.length;
+          const [x, y] = n.pos[r];
+          const [ox, oy] = otherN.pos[r];
           const d = p.dist(x, y, ox, oy);
           const prob = Math.max(0, 1 - d / threshold) ** 8;
           const wantConnectCheck = Math.random() < prob;
@@ -267,11 +275,4 @@ export function updateConnection(vSensor: VSensor[], fg?: CheckerGrid[]): [numbe
   while (segFlat.length < 400) segFlat.push(0);
 
   return [segFlat, endPoint];
-}
-
-export function updateFreq(freq: Frequency[], t: number) {
-  for (let i = freq.length - 1; i >= 0; i--) {
-    freq[i].t -= t;
-    if (freq[i].t <= 0) freq.splice(i, 1);
-  }
 }

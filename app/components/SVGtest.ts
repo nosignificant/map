@@ -6,7 +6,7 @@ import { GRID, CANVAS, TIME } from "./Util/constant";
 import { backGroundSetup } from "./drawings/background";
 import { fullGrid, checkerboard, draw5x5 } from "./drawings/checkerboard";
 import { IZA } from "./IZA";
-import { initVSensor, snapToSensor, updateVSensor, vSensored, findNearCheck, findOtherSensor, drawConnections } from "./sensors/vSensor";
+import { initVSensor, snapToSensor, updateVSensor, vSensored, findOtherSensor, drawConnections } from "./sensors/vSensor";
 import { drawTSensor } from "./sensors/tSensor";
 
 export function SVGsketch(container: HTMLElement) {
@@ -78,7 +78,6 @@ export function SVGsketch(container: HTMLElement) {
     //mouseEvent
     p.mouseClicked = () => {
       const closest = snapToSensor(p, vSensor);
-      closest.near = findNearCheck(p, closest, checker);
       closest.clickCount++;
       closest.t = GRID * closest.clickCount;
       closest.connect = findOtherSensor(p, closest, vSensor, checker);

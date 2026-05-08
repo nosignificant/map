@@ -2,10 +2,11 @@ import p5 from "p5";
 import { CheckerGrid, VSensor } from "./Util/types";
 import { GRID, CANVAS, TIME } from "./Util/constant";
 import { fullGrid, checkerboard } from "./drawings/checkerboard";
-import { initVSensor, snapToSensor, findNearCheck, findOtherSensor, updateVSensor, updateConnection } from "./sensors/vSensor";
+import { initVSensor, snapToSensor, updateDistStep, findOtherSensor, updateVSensor, updateConnection } from "./sensors/vSensor";
 import { computePos4Shader, shaderCobine } from "./Util/shaderUtil";
 import { drawFABRIK, initTentacle, tenOccupied } from "./drawings/tentacles";
 import { buildTree, updateTree, drawTree, TreeSeg } from "./drawings/growTree";
+import { playToneFromPos } from "./sensors/tSensor";
 
 export function shaderSketch(container: HTMLElement) {
   let fg: CheckerGrid[];
@@ -15,6 +16,11 @@ export function shaderSketch(container: HTMLElement) {
   let noiseTex: p5.Image;
   const units: p5.Image[] = [];
   const sensorPos: number[] = [];
+  //아두이노
+  const socket = new WebSocket("ws://localhost:8080");
+  //웹 소리
+  let audioCtx: AudioContext;
+  const lastTargetTime = new Map<string, number>(); // tentacle별 마지막 재생 시각
 
   let tOccupied: [number, number][] = [];
   const endPointTrail: [number, number][] = [];
@@ -36,8 +42,31 @@ export function shaderSketch(container: HTMLElement) {
       // vsensor init
       vSensor = initVSensor(fg);
 
+      //arduino init
+      socket.onmessage = (event) => {
+        const data = event.data.trim();
+        const parts = data.split(":");
+        const sensorId = parseInt(parts[0].replace("piezo", "")) - 1;
+        const val = parseInt(parts[1]);
+
+        //console.log("sensorId:", sensorId, "val:", val);
+
+        if (vSensor[sensorId]) {
+          vSensor[sensorId].strength = val;
+        }
+      };
+
+      //웹 소리 객체 init
+      window.addEventListener(
+        "click",
+        () => {
+          if (!audioCtx) audioCtx = new AudioContext();
+        },
+        { once: true }
+      );
+
+      //tentacle init (1~2개)
       for (const v of vSensor) {
-        //tentacle init (1~2개)
         const r = Math.floor(Math.random() * 2) + 1;
         v.tentacles = initTentacle(v, r, 100, 6);
         console.log(v.tentacles);
@@ -140,27 +169,43 @@ export function shaderSketch(container: HTMLElement) {
       sketchShader.setUniform("uTrailCount", endPointTrail.length);
 
       p.rect(-CANVAS / 2, -CANVAS / 2, CANVAS, CANVAS);
+      p.resetShader();
 
-      if (units[0]) {
-        p.resetShader();
-        for (const v of vSensor) {
-          for (const n of v.near) {
-            if (n.distStep === 1) {
-              const [x, y] = computePos4Shader(n.checkerGrid.pos);
-              p.image(units[0], x - GRID / 2, y - GRID / 2, GRID, GRID);
-            }
-          }
+      // 순비 이미지 그리기
+      const nearImgs = updateDistStep(vSensor, units);
+      console.log("그릴 이미지 개수:", nearImgs.length); // 조건 통과한 이미지 수
+
+      for (const n of nearImgs) {
+        for (const pos of n.pos) {
+          const [x, y] = computePos4Shader(pos);
+          p.image(n.image, x - GRID / 2, y - GRID / 2, GRID, GRID);
         }
       }
-      p.resetShader();
 
       // tree 업데이트 + 그리기 (occupied 침범하면 후퇴, 사라지면 재성장)
       updateTree(trees, tOccupied, 0.04, 0.08);
       drawTree(p, trees, 7);
 
+      const STEP_DELAY = 0.15; // 음 사이 간격 (초)
+      let stepIndex = 0; // 매 프레임 재생할 때 누적되는 인덱스
+
       for (const v of vSensor) {
-        for (const t of v.tentacles) {
+        for (let i = 0; i < v.tentacles.length; i++) {
+          const t = v.tentacles[i];
           drawFABRIK(p, t, TIME, endPoint);
+
+          if (t.target && audioCtx) {
+            const key = `${v.checkerGrid.pos[0]}_${v.checkerGrid.pos[1]}_${i}`;
+            const now = Date.now();
+            const last = lastTargetTime.get(key) || 0;
+
+            if (now - last > 500) {
+              // 순서대로 딜레이 누적
+              playToneFromPos(audioCtx, t.target, stepIndex * STEP_DELAY);
+              lastTargetTime.set(key, now);
+              stepIndex++;
+            }
+          }
         }
       }
     };
@@ -169,18 +214,17 @@ export function shaderSketch(container: HTMLElement) {
     //EVENT//
     //EVENT//
     //EVENT//
-    p.mouseClicked = () => {
-      if (!checker || !vSensor) return;
+    // p.mouseClicked = () => {
+    //   if (!checker || !vSensor) return;
 
-      const closest = snapToSensor(p, vSensor);
-      console.log("closest:", closest.checkerGrid.pos);
-      console.log("near:", closest.near);
-      closest.near = findNearCheck(p, closest, checker);
-      closest.clickCount++;
-      closest.t = GRID * closest.clickCount;
-      closest.connect = findOtherSensor(p, closest, vSensor, checker);
-      p.loop();
-    };
+    //   const closest = snapToSensor(p, vSensor);
+    //   console.log("closest:", closest.checkerGrid.pos);
+    //   console.log("near:", closest.near);
+    //   closest.clickCount++;
+    //   closest.t = GRID * closest.clickCount;
+    //   closest.connect = findOtherSensor(p, closest, vSensor, checker);
+    //   p.loop();
+    // };
   }, container);
 
   return myP;
