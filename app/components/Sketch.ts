@@ -2,13 +2,13 @@ import p5 from "p5";
 import { CheckerGrid, VSensor } from "./Util/types";
 import { GRID, CANVAS, TIME } from "./Util/constant";
 import { fullGrid, checkerboard } from "./drawings/checkerboard";
-import { initVSensor, snapToSensor, updateDistStep, findOtherSensor, updateVSensor, updateConnection } from "./sensors/vSensor";
+import { initVSensor, updateDistStep, updateVSensor, updateConnection } from "./sensors/vSensor";
 import { computePos4Shader, shaderCobine } from "./Util/shaderUtil";
-import { drawFABRIK, initTentacle, tenOccupied } from "./drawings/tentacles";
+import { drawFABRIK, initTentacle, tenOccupied, drawOccupiedMeta, drawOccupied } from "./drawings/tentacles";
 import { buildTree, updateTree, drawTree, TreeSeg } from "./drawings/growTree";
 import { playToneFromPos } from "./sensors/tSensor";
 
-export function shaderSketch(container: HTMLElement) {
+export function Sketch(container: HTMLElement) {
   let fg: CheckerGrid[];
   let checker: CheckerGrid[];
   let vSensor: VSensor[];
@@ -125,11 +125,9 @@ export function shaderSketch(container: HTMLElement) {
 
       // sensor 상태 추출해서 쉐이더에 보내기
       const sensorT: number[] = [];
-      const sensorClick: number[] = [];
 
       for (const v of vSensor) {
         sensorT.push(v.t);
-        sensorClick.push(v.clickCount);
       }
 
       // 셰이더 실행
@@ -143,8 +141,6 @@ export function shaderSketch(container: HTMLElement) {
       //센서 위치, 센서 시간
       sketchShader.setUniform("uSensorPos", sensorPos);
       sketchShader.setUniform("uSensorT", sensorT.slice(0, 25));
-      //클릭 - 반응 횟수
-      sketchShader.setUniform("uSensorClick", sensorClick.slice(0, 25));
       //센서 개수
       sketchShader.setUniform("uSensorCount", vSensor.length);
       //그려야 하는 선 개수
@@ -185,6 +181,7 @@ export function shaderSketch(container: HTMLElement) {
       // tree 업데이트 + 그리기 (occupied 침범하면 후퇴, 사라지면 재성장)
       updateTree(trees, tOccupied, 0.04, 0.08);
       drawTree(p, trees, 7);
+      console.log("tenCount:", tenUnique.length); // draw() 안에서
 
       const STEP_DELAY = 0.15; // 음 사이 간격 (초)
       let stepIndex = 0; // 매 프레임 재생할 때 누적되는 인덱스

@@ -2,6 +2,7 @@ import p5 from "p5";
 import { Tentacle, VSensor, CheckerGrid } from "../Util/types";
 import { computePos4Shader } from "../Util/shaderUtil";
 import { snapToCheck } from "./checkerboard";
+import { GRID } from "../Util/constant";
 
 export function initTentacle(vSensor: VSensor, count: number, length: number, partCount: number): Tentacle[] {
   const tens: Tentacle[] = [];
@@ -116,7 +117,7 @@ export function drawFABRIK(p: p5, t: Tentacle, time: number, endPoint?: [number,
 
   // endPoint를 향하고 있으면 다른 색/두께
   const isTargetingEndPoint = t.target && endPoint && t.target[0] === endPoint[0] && t.target[1] === endPoint[1];
-  const lineColor = isTargetingEndPoint ? [255, 100, 100] : [100, 100, 100]; // 빨간색 vs 회색
+  const lineColor: [number, number, number] = isTargetingEndPoint ? [255, 100, 100] : [100, 100, 100];
   const lineWeight = isTargetingEndPoint ? 2.5 : 1.5;
   const pointSize = isTargetingEndPoint ? 4 : 3;
 
@@ -126,7 +127,7 @@ export function drawFABRIK(p: p5, t: Tentacle, time: number, endPoint?: [number,
   for (let i = 0; i < t.parts.length - 1; i++) {
     const [x1, y1] = computePos4Shader(t.parts[i]);
     const [x2, y2] = computePos4Shader(t.parts[i + 1]);
-    p.line(x1, y1, x2, y2);
+    //p.line(x1, y1, x2, y2);
   }
 
   // 촉수 점들
@@ -134,6 +135,152 @@ export function drawFABRIK(p: p5, t: Tentacle, time: number, endPoint?: [number,
   for (const b of t.parts) {
     const [x, y] = computePos4Shader(b);
     p.circle(x, y, pointSize);
+  }
+}
+
+export function drawOccupiedMeta(p: p5, occupied: [number, number][]) {
+  if (occupied.length === 0) return;
+
+  const radius = GRID * 5;
+  const threshold = 1.0;
+  const res = GRID / 2;
+
+  // 각 점에서 metaball 필드값: 가까울수록 값이 커짐
+  function field(x: number, y: number): number {
+    let sum = 0;
+    for (const [ox, oy] of occupied) {
+      const d = Math.hypot(x - ox, y - oy);
+      if (d < 0.001) return 999;
+      sum += (radius * radius) / (d * d);
+    }
+    return sum;
+  }
+
+  // 두 점 사이에서 threshold를 넘는 정확한 위치 선형보간
+  function isoPoint(x0: number, y0: number, v0: number, x1: number, y1: number, v1: number): [number, number] {
+    const t = (threshold - v0) / (v1 - v0);
+    return [x0 + (x1 - x0) * t, y0 + (y1 - y0) * t];
+  }
+
+  // 바운딩 박스
+  let minX = Infinity,
+    maxX = -Infinity,
+    minY = Infinity,
+    maxY = -Infinity;
+  for (const [x, y] of occupied) {
+    minX = Math.min(minX, x - radius * 2);
+    maxX = Math.max(maxX, x + radius * 2);
+    minY = Math.min(minY, y - radius * 2);
+    maxY = Math.max(maxY, y + radius * 2);
+  }
+
+  p.push();
+  p.noFill();
+  p.stroke(150);
+  p.strokeWeight(1.5);
+
+  for (let x = minX; x < maxX; x += res) {
+    for (let y = minY; y < maxY; y += res) {
+      const x1 = x + res;
+      const y1 = y + res;
+
+      // 4개 꼭짓점 필드값 (TL, TR, BR, BL)
+      const f00 = field(x, y); // TL
+      const f10 = field(x1, y); // TR
+      const f11 = field(x1, y1); // BR
+      const f01 = field(x, y1); // BL
+
+      // 각 꼭짓점이 threshold 넘으면 비트 세팅
+      const c = (f00 > threshold ? 8 : 0) | (f10 > threshold ? 4 : 0) | (f11 > threshold ? 2 : 0) | (f01 > threshold ? 1 : 0);
+
+      if (c === 0 || c === 15) continue;
+
+      // 각 변의 교점 (lazy 계산)
+      const top = () => isoPoint(x, y, f00, x1, y, f10);
+      const right = () => isoPoint(x1, y, f10, x1, y1, f11);
+      const bottom = () => isoPoint(x, y1, f01, x1, y1, f11);
+      const left = () => isoPoint(x, y, f00, x, y1, f01);
+
+      const seg = (a: [number, number], b: [number, number]) => {
+        const [ax, ay] = computePos4Shader(a);
+        const [bx, by] = computePos4Shader(b);
+        p.line(ax, ay, bx, by);
+      };
+
+      // Marching Squares 16가지 케이스
+      switch (c) {
+        case 1:
+          seg(left(), bottom());
+          break;
+        case 2:
+          seg(bottom(), right());
+          break;
+        case 3:
+          seg(left(), right());
+          break;
+        case 4:
+          seg(top(), right());
+          break;
+        case 5:
+          seg(top(), left());
+          seg(bottom(), right());
+          break;
+        case 6:
+          seg(top(), bottom());
+          break;
+        case 7:
+          seg(top(), left());
+          break;
+        case 8:
+          seg(top(), left());
+          break;
+        case 9:
+          seg(top(), bottom());
+          break;
+        case 10:
+          seg(top(), right());
+          seg(left(), bottom());
+          break;
+        case 11:
+          seg(top(), right());
+          break;
+        case 12:
+          seg(left(), right());
+          break;
+        case 13:
+          seg(bottom(), right());
+          break;
+        case 14:
+          seg(left(), bottom());
+          break;
+      }
+    }
+  }
+  p.pop();
+}
+
+export function drawOccupied(p: p5, occupied: [number, number][]) {
+  const occupiedSet = new Set(occupied.map(([x, y]) => `${x},${y}`));
+
+  p.stroke(150);
+  p.strokeWeight(1);
+
+  for (const [x, y] of occupied) {
+    const [px, py] = computePos4Shader([x, y]);
+    const l = px - GRID / 2;
+    const t = py - GRID / 2;
+    const r = px + GRID / 2;
+    const b = py + GRID / 2;
+
+    const hasTop = occupiedSet.has(`${x},${y - GRID}`);
+    const hasBottom = occupiedSet.has(`${x},${y + GRID}`);
+    const hasLeft = occupiedSet.has(`${x - GRID},${y}`);
+    const hasRight = occupiedSet.has(`${x + GRID},${y}`);
+
+    if (!hasTop) p.line(l, t, r, t);
+    if (!hasBottom) p.line(l, b, r, b);
+    if (!hasLeft) p.line(l, t, l, b);
+    if (!hasRight) p.line(r, t, r, b);
   }
 }
 

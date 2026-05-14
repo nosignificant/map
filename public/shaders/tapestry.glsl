@@ -5,18 +5,28 @@ vec3 drawTapestry(vec2 p, vec3 col) {
   float subGrid = 15.0;
   vec2 subGridP = floor(p / subGrid) * subGrid + subGrid * 0.5;
 
-  // tenOccupied 체크 + sub-grid 점이 경계선까지 거리
   bool occupied = false;
-  float minBoxSdf = 9999.0;
+  float minBoxSDF = 9999.0;
+  float metaField = 0.0;
+  float metaRadius = uGrid * 0.5;
+
   for (int i = 0; i < 200; i++) {
     if (i >= uTenCount) break;
     if (length(gridP - uTenOccupied[i]) < uGrid * 0.5) occupied = true;
+
     vec2 d = abs(subGridP - uTenOccupied[i]) - vec2(uGrid * 0.4);
     float boxD = length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
-    minBoxSdf = min(minBoxSdf, boxD);
+    minBoxSDF = min(minBoxSDF, boxD);
+
+    // metaball 필드: 반경 내 포인트만 계산
+    float md = length(p - uTenOccupied[i]);
+    if (md < metaRadius * 2.0) {
+      md = max(md, 0.001);
+      metaField += (metaRadius * metaRadius) / (md * md);
+    }
   }
 
-  // sub-grid 십자 모양 (공통)
+  // sub-grid 십자 모양
   vec2 subLocal = p - subGridP;
   float crossThick = 1.0;
   float crossLen = 4.0;
@@ -24,32 +34,24 @@ vec3 drawTapestry(vec2 p, vec3 col) {
   float v = step(abs(subLocal.x), crossThick) * step(abs(subLocal.y), crossLen);
   float cross = max(h, v);
 
-  // occupied (흰색) 영역
+  // metaball 경계선: threshold 1.0 양쪽에서 만나는 곳
+  float metaEdge = smoothstep(0.8, 1.0, metaField) - smoothstep(1.0, 1.1, metaField);
+
+  // occupied 영역
   if (occupied) {
-    // 경계선 안쪽 1칸 침범한 검은 십자 (랜덤)
-    if (minBoxSdf > -uGrid && minBoxSdf < 0.0) {
+    if (minBoxSDF > -uGrid && minBoxSDF < 0.0) {
       vec2 noiseUV = subGridP / 256.0;
       float n = texture2D(uNoise, noiseUV).r;
-      // 경계 가까울수록 확률 높음
-      float prob = 0.5 * (1.0 - (-minBoxSdf) / uGrid);
+      float prob = 0.5 * (1.0 - (-minBoxSDF) / uGrid);
       if (n < prob) {
         col = mix(col, vec3(0.0), cross);
       }
     }
+    col = mix(col, vec3(0.0), metaEdge);
     return col;
   }
 
-  // 노란 영역 (occupied 아닌 곳)
-  vec3 yellowCol = vec3(1.0, 0.85, 0.0);
-  col = yellowCol;
-
-  // 빨간 십자 (전체 노란 영역)
-  col = mix(col, vec3(1.0, 0.0, 0.0), cross);
-
-  // 경계선 한 줄에 검은 십자
-  if (minBoxSdf > 0.0 && minBoxSdf < 8.0) {
-    col = mix(col, vec3(0.0), cross);
-  }
+  col = mix(col, vec3(0.0), metaEdge);
 
   return col;
 }
