@@ -38,20 +38,7 @@ export function initVSensor(checker: CheckerGrid[]): VSensor[] {
 //update//
 export function updateVSensor(p: p5, vSensors: VSensor[], checker: CheckerGrid[], time: number) {
   for (const v of vSensors) {
-    if (v.clickCount > 0) {
-      //for (const n of c.near) {
-      //if (n.distStep === 1) drawCircleCross(p, n.checkerGrid.pos[0], n.checkerGrid.pos[1], GRID);
-      //if (c.clickCount >= 2 && n.distStep === 2) drawTwoCircle(p, n.checkerGrid.pos[0], n.checkerGrid.pos[1], GRID);
-      //}
-      v.t -= time;
-      //현재 클릭카운트보다 원 반경 / grid(clickCount)가 작아지면
-      //시작하고 바로나서는 grid * clickcount - time 상태니까 바로 0이됨
-      if (v.t / GRID <= v.clickCount - 1) {
-        if (v.t <= 0) {
-          v.clickCount--;
-        }
-      }
-    }
+    v.t -= time;
   }
 }
 
@@ -78,20 +65,71 @@ export function snapToSensor(p: p5, src: VSensor[]): VSensor {
   return closest;
 }
 
+const STEP_OFFSETS: [number, number][][] = [
+  [[0, 0]], // 1단계
+  [
+    [0, -1],
+    [0, 1],
+    [-1, 0],
+    [1, 0],
+  ], // 2단계: 십자
+  [
+    [1, 1],
+    [1, -1],
+    [-1, -1],
+    [-1, 1],
+  ], // 3단계: 대각
+  [
+    [0, -2],
+    [0, 2],
+    [-2, 0],
+    [2, 0],
+  ], // 4단계: 십자 2칸
+  [
+    [1, -2],
+    [1, 2],
+    [2, -1],
+    [2, 1],
+    [-1, -2],
+    [-1, 2],
+    [-2, -1],
+    [-2, 1],
+  ], // 5단계
+  [
+    [0, -3],
+    [0, 3],
+    [-3, 0],
+    [3, 0], // 십자 3칸
+    [2, 2],
+    [2, -2],
+    [-2, 2],
+    [-2, -2], // 대각 2칸
+  ], // 6단계
+];
+
 //순비 이미지 그리기
 export function updateDistStep(vSensor: VSensor[], units: p5.Image[]) {
   const near: CheckerDistStep[] = [];
-
-  if (units.length === 0) return near; // 이미지 로드 전이면 스킵
+  if (units.length === 0) return near;
 
   for (const v of vSensor) {
     const [x, y] = v.checkerGrid.pos;
+    if (v.strength <= 0) continue;
 
-    if (v.strength <= 0) continue; // 신호 없으면 스킵
+    const stageCount = Math.min(Math.floor(v.strength / 100), STEP_OFFSETS.length);
+    const image = units[stageCount - 1];
+    if (!image) continue;
 
-    if (v.strength >= 100 && units[0]) near.push({ pos: [[x, y]], image: units[0] });
-    if (v.strength >= 200 && units[1]) near.push({ pos: [[x, y]], image: units[1] });
-    if (v.strength >= 300 && units[2]) near.push({ pos: [[x - GRID, y - GRID]], image: units[2] });
+    // 1단계부터 현재 단계까지 오프셋 누적
+    const allOffsets: [number, number][] = [];
+    for (let s = 0; s < stageCount; s++) {
+      allOffsets.push(...STEP_OFFSETS[s]);
+    }
+
+    near.push({
+      pos: allOffsets.map(([dx, dy]) => [x + dx * GRID, y + dy * GRID]),
+      image,
+    });
   }
   return near;
 }

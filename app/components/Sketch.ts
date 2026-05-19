@@ -5,7 +5,6 @@ import { fullGrid, checkerboard } from "./drawings/checkerboard";
 import { initVSensor, updateDistStep, updateVSensor, updateConnection } from "./sensors/vSensor";
 import { computePos4Shader, shaderCobine } from "./Util/shaderUtil";
 import { drawFABRIK, initTentacle, tenOccupied, drawOccupiedMeta, drawOccupied } from "./drawings/tentacles";
-import { buildTree, updateTree, drawTree, TreeSeg } from "./drawings/growTree";
 import { playToneFromPos } from "./sensors/tSensor";
 
 export function Sketch(container: HTMLElement) {
@@ -24,7 +23,6 @@ export function Sketch(container: HTMLElement) {
 
   let tOccupied: [number, number][] = [];
   const endPointTrail: [number, number][] = [];
-  let trees: TreeSeg[] = [];
 
   const myP = new p5((p: p5) => {
     //SETUP//
@@ -75,16 +73,6 @@ export function Sketch(container: HTMLElement) {
       while (sensorPos.length < 50) sensorPos.push(0);
 
       noiseTex = await p.loadImage("/img/noiseTex.png");
-
-      // tree init - 시드 위치 몇 개 지정해서 자유 각도 트리 생성
-      const seeds: [number, number][] = [
-        [GRID * 2, 0],
-        [GRID * 14, 0],
-        [GRID * 26, 0],
-      ];
-      for (const seed of seeds) {
-        trees = trees.concat(buildTree(seed, 6, GRID * 2.5, 8)); // 2 = 북쪽(위), depth 8
-      }
 
       //img init
       fetch("/api/img")
@@ -177,10 +165,6 @@ export function Sketch(container: HTMLElement) {
           p.image(n.image, x - GRID / 2, y - GRID / 2, GRID, GRID);
         }
       }
-
-      // tree 업데이트 + 그리기 (occupied 침범하면 후퇴, 사라지면 재성장)
-      updateTree(trees, tOccupied, 0.04, 0.08);
-      drawTree(p, trees, 7);
       console.log("tenCount:", tenUnique.length); // draw() 안에서
 
       const STEP_DELAY = 0.15; // 음 사이 간격 (초)

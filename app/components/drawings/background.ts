@@ -2,7 +2,7 @@ import type p5 from "p5";
 import { GRID, CANVAS, rows, cols } from "../Util/constant";
 
 export function backGroundSetup(p: p5) {
-  p.fill(255, 255, 255);
+  p.fill(0, 0, 0);
   p.stroke(0);
   p.strokeWeight(2);
   p.rect(0, 0, CANVAS, CANVAS);
