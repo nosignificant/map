@@ -1,12 +1,16 @@
 import { CANVAS } from "./constant";
 export async function shaderCobine(): Promise<{ vertSrc: string; fragCombined: string }> {
   const vertSrc = await fetch("/shaders/sketch.vert").then((r) => r.text());
-  const [fragSrc, sdfSrc, tapestrySrc] = await Promise.all([
+  const [fragSrc, sdfSrc, connectionsSrc, tapestrySrc] = await Promise.all([
     fetch("/shaders/sketch.frag").then((r) => r.text()),
     fetch("/shaders/sdf.glsl").then((r) => r.text()),
+    fetch("/shaders/connections.glsl").then((r) => r.text()),
     fetch("/shaders/tapestry.glsl").then((r) => r.text()),
   ]);
-  const fragCombined = fragSrc.replace("// #include sdf.glsl", sdfSrc).replace("// #include tapestry.glsl", tapestrySrc);
+  const fragCombined = fragSrc
+    .replace("// #include sdf.glsl", sdfSrc)
+    .replace("// #include connections.glsl", connectionsSrc)
+    .replace("// #include tapestry.glsl", tapestrySrc);
 
   return { vertSrc, fragCombined };
 }

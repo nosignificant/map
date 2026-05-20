@@ -1,12 +1,12 @@
 import p5 from "p5";
 import { SSensor } from "../Util/types";
 
-const ANGLE_STEP = 10; // 각도 10° 간격
+export const ANGLE_STEP = 10; // 각도 10° 간격
 const CELL_CM = 100; // 1 grid cell = 1m
-const MAX_CM = 200; // 최대 측정 거리 (cm)
+export const MAX_CM = 600; // vSensor 6단계에 맞춰 6개 ring
 const PX_PER_CELL = 150; // 1 cell의 픽셀 반경
-const MAX_CELLS = MAX_CM / CELL_CM;
-const DOT_SIZE = PX_PER_CELL * 0.55;
+const MAX_CELLS = MAX_CM / CELL_CM; // = 6
+const DOT_SIZE = PX_PER_CELL * 0.3;
 
 export const SONAR_R = MAX_CELLS * PX_PER_CELL;
 

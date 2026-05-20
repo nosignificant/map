@@ -112,7 +112,7 @@ export function Sketch(container: HTMLElement) {
       updateVSensor(p, vSensor, checker, TIME);
 
       //연결점들 , segment float로 분리
-      const [segFlat, endPoint] = updateConnection(vSensor, fg);
+      const [segFlat, endPoint, realSegCount] = updateConnection(vSensor, fg);
       tOccupied = tenOccupied(fg, vSensor);
 
       // 100개 segment = vec2 200개 = float 400개로 패딩
@@ -143,8 +143,8 @@ export function Sketch(container: HTMLElement) {
       //센서 개수
       sketchShader.setUniform("uSensorCount", vSensor.length);
       //그려야 하는 선 개수
-      sketchShader.setUniform("uSegments", segFlat.slice(0, 200)); // vec2 100개
-      sketchShader.setUniform("uSegmentCount", Math.min(segFlat.length / 4, 100));
+      sketchShader.setUniform("uSegments", segFlat.slice(0, 400));
+      sketchShader.setUniform("uSegmentCount", Math.min(realSegCount, 50));
       //신호 보내는 점 위치
       while (endPoint.length < 2) endPoint.push(0);
       sketchShader.setUniform("uEndPoint", [endPoint[0], endPoint[1]]);
@@ -174,6 +174,7 @@ export function Sketch(container: HTMLElement) {
 
       // 소나 오버레이: P2D 버퍼에 그린 뒤 이미지로 합성
       sonarGfx.clear();
+      sonarGfx.resetMatrix();
       sonarGfx.translate(CANVAS / 2, CANVAS / 2);
       sonarGfx.scale(CANVAS / (SONAR_R * 2));
       drawSonarHalf(sonarGfx as unknown as p5, sSensor, false);

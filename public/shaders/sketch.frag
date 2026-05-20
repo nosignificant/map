@@ -25,6 +25,7 @@ uniform vec2 uTrail[50];
 uniform int uTrailCount;
 
 // #include sdf.glsl
+// #include connections.glsl
 // #include tapestry.glsl
 
 
@@ -35,7 +36,8 @@ void main(){
     vec3 col = vec3(0.0, 0.0, 0.0);
 
     col = drawTapestry(p, col);
+    col = drawConnections(p, col);
 
-      gl_FragColor = vec4(col, 1.0);
+    gl_FragColor = vec4(col, 1.0);
 
 }

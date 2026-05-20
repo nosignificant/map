@@ -135,15 +135,19 @@ export function updateDistStep(vSensor: VSensor[], units: p5.Image[]) {
     if (v.strength <= 0) continue;
 
     const stageCount = Math.min(Math.floor(v.strength / 100), STEP_OFFSETS.length);
+    if (stageCount === 0) continue;
 
-    // 각 단계마다 자기 이미지로 누적 그리기
+    // 단계 s마다: 0~s 누적 위치에 units[s] 이미지 → 이전 위치에 여러 이미지 겹침
     for (let s = 0; s < stageCount; s++) {
       const image = units[s % units.length];
       if (!image) continue;
-      near.push({
-        pos: STEP_OFFSETS[s].map(([dx, dy]) => [x + dx * GRID, y + dy * GRID]),
-        image,
-      });
+      const allPos: [number, number][] = [];
+      for (let p = 0; p <= s; p++) {
+        for (const [dx, dy] of STEP_OFFSETS[p]) {
+          allPos.push([x + dx * GRID, y + dy * GRID]);
+        }
+      }
+      near.push({ pos: allPos, image });
     }
   }
   return near;
@@ -254,7 +258,7 @@ export function drawConnections(p: p5, src: Connect[], checker: CheckerGrid[]) {
   }
 }
 
-export function updateConnection(vSensor: VSensor[], fg?: CheckerGrid[]): [number[], [number, number]] {
+export function updateConnection(vSensor: VSensor[], fg?: CheckerGrid[]): [number[], [number, number], number] {
   const segFlat: number[] = [];
   let endPoint: [number, number] = [0, 0];
 
@@ -325,7 +329,8 @@ export function updateConnection(vSensor: VSensor[], fg?: CheckerGrid[]): [numbe
       }
     }
   }
+  const realSegCount = Math.floor(segFlat.length / 4);
   while (segFlat.length < 400) segFlat.push(0);
 
-  return [segFlat, endPoint];
+  return [segFlat, endPoint, realSegCount];
 }

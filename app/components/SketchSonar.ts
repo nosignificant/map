@@ -1,9 +1,9 @@
 import p5 from "p5";
-import { sSensor, initSSensor } from "./Util/sSensorStore";
-import { drawSonarHalf, SONAR_R } from "./drawings/sonar";
+import { sSensor, initSSensor, randomizeSSensor } from "./Util/sSensorStore";
+import { drawSonarHalf, SONAR_R, ANGLE_STEP, MAX_CM } from "./drawings/sonar";
 import { CANVAS } from "./Util/constant";
 
-const SIZE = CANVAS / 4;
+const SIZE = CANVAS / 3;
 
 export function SketchSonar(container: HTMLElement) {
   const myP = new p5((p: p5) => {
@@ -26,6 +26,10 @@ export function SketchSonar(container: HTMLElement) {
       p.scale(SIZE / (SONAR_R * 2));
       drawSonarHalf(p, sSensor, false);
       drawSonarHalf(p, sSensor, true);
+    };
+
+    p.mousePressed = () => {
+      if (p.mouseButton === p.RIGHT) randomizeSSensor(ANGLE_STEP, MAX_CM);
     };
   }, container);
 

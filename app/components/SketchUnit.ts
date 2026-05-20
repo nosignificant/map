@@ -5,15 +5,19 @@ import { fullGrid } from "./drawings/checkerboard";
 import { updateDistStep } from "./sensors/vSensor";
 import { initVSensorStore } from "./Util/vSensorStore";
 import { computePos4Shader } from "./Util/shaderUtil";
+import { recordImage } from "./Util/imageHistoryStore";
+
+const UNIT_SIZE = CANVAS / 3;
 
 export function SketchUnit(container: HTMLElement) {
   let fg: CheckerGrid[];
   let vSensor: VSensor[];
   const units: p5.Image[] = [];
+  const unitUrls: string[] = [];
 
   const myP = new p5((p: p5) => {
     p.setup = async () => {
-      p.createCanvas(CANVAS / 4, CANVAS / 4, p.WEBGL);
+      p.createCanvas(UNIT_SIZE, UNIT_SIZE, p.WEBGL);
       p.pixelDensity(1);
 
       fg = fullGrid();
@@ -25,6 +29,7 @@ export function SketchUnit(container: HTMLElement) {
           urls.forEach((url) => {
             p.loadImage(url, (loadedImg) => {
               units.push(loadedImg);
+              unitUrls.push(url);
             });
           });
         });
@@ -35,17 +40,22 @@ export function SketchUnit(container: HTMLElement) {
       p.background(0);
       p.resetShader();
 
-      // 테두리 (scale 적용 전, WEBGL 캔버스 엣지 = ±CANVAS/8)
       p.noFill();
       p.stroke(255);
       p.strokeWeight(2);
-      p.rect(-CANVAS / 8, -CANVAS / 8, CANVAS / 4, CANVAS / 4);
+      p.rect(-UNIT_SIZE / 2, -UNIT_SIZE / 2, UNIT_SIZE, UNIT_SIZE);
 
-      // 내부 좌표는 CANVAS 기준 → 1/4 캔버스에 맞추려고 0.25 스케일
-      p.scale(0.25);
+      p.scale(1 / 3);
 
       const nearImgs = updateDistStep(vSensor, units);
+      const seenUrls = new Set<string>();
       for (const n of nearImgs) {
+        const idx = units.indexOf(n.image);
+        const url = unitUrls[idx];
+        if (idx >= 0 && url && !seenUrls.has(url)) {
+          seenUrls.add(url);
+          recordImage(url);
+        }
         for (const pos of n.pos) {
           const [x, y] = computePos4Shader(pos);
           p.image(n.image, x - GRID / 2, y - GRID / 2, GRID, GRID);
