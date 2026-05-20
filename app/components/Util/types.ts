@@ -31,6 +31,13 @@ export type VSensor = {
   strength: number;
 };
 
+// Sonar sensor — 각도와 거리 한 쌍 (vSensor와 비슷한 형식의 배열로 보관)
+export type SSensor = {
+  angle: number;
+  distance: number;
+  t: number;
+};
+
 //T sensor images
 export type CheckerDistStep = {
   pos: [number, number][];

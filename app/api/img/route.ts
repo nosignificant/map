@@ -4,12 +4,12 @@ import fs from "fs";
 import path from "path";
 
 export async function GET() {
-  const imgDir = path.join(process.cwd(), "public", "units");
+  const imgDir = path.join(process.cwd(), "public", "units", "units-3pt-yl");
 
   const files = fs.readdirSync(imgDir).filter((f) => /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(f));
 
   // 브라우저에서 접근 가능한 경로로 변환
-  const urls = files.map((f) => `/units/${f}`);
+  const urls = files.map((f) => `/units/units-3pt-yl/${f}`);
 
   return NextResponse.json(urls);
 }

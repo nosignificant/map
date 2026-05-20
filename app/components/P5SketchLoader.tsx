@@ -4,6 +4,6 @@ import dynamic from "next/dynamic";
 
 const P5Sketch = dynamic(() => import("./P5Sketch"), { ssr: false });
 
-export default function P5SketchLoader() {
-  return <P5Sketch />;
+export default function P5SketchLoader({ sketchName }: { sketchName?: "main" | "unit" | "sonar" }) {
+  return <P5Sketch sketchName={sketchName} />;
 }

@@ -30,6 +30,24 @@ export function initVSensor(checker: CheckerGrid[]): VSensor[] {
       });
     }
   }
+
+  // 가장 중심에 있는 vSensor 제거
+  if (result.length > 0) {
+    const cx = result.reduce((s, v) => s + v.checkerGrid.pos[0], 0) / result.length;
+    const cy = result.reduce((s, v) => s + v.checkerGrid.pos[1], 0) / result.length;
+    let centerIdx = 0;
+    let minD = Infinity;
+    for (let i = 0; i < result.length; i++) {
+      const [x, y] = result[i].checkerGrid.pos;
+      const d = (x - cx) ** 2 + (y - cy) ** 2;
+      if (d < minD) {
+        minD = d;
+        centerIdx = i;
+      }
+    }
+    result.splice(centerIdx, 1);
+  }
+
   return result;
 }
 
@@ -117,19 +135,16 @@ export function updateDistStep(vSensor: VSensor[], units: p5.Image[]) {
     if (v.strength <= 0) continue;
 
     const stageCount = Math.min(Math.floor(v.strength / 100), STEP_OFFSETS.length);
-    const image = units[stageCount - 1];
-    if (!image) continue;
 
-    // 1단계부터 현재 단계까지 오프셋 누적
-    const allOffsets: [number, number][] = [];
+    // 각 단계마다 자기 이미지로 누적 그리기
     for (let s = 0; s < stageCount; s++) {
-      allOffsets.push(...STEP_OFFSETS[s]);
+      const image = units[s % units.length];
+      if (!image) continue;
+      near.push({
+        pos: STEP_OFFSETS[s].map(([dx, dy]) => [x + dx * GRID, y + dy * GRID]),
+        image,
+      });
     }
-
-    near.push({
-      pos: allOffsets.map(([dx, dy]) => [x + dx * GRID, y + dy * GRID]),
-      image,
-    });
   }
   return near;
 }

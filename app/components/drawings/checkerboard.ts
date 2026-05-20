@@ -35,7 +35,7 @@ export function checkerboard(): CheckerGrid[] {
 
 export function draw5x5(p: p5, clicks: VSensor[]) {
   p.strokeWeight(1);
-  p.stroke(0);
+  p.stroke(255);
   // 선
   if (!clicks || clicks.length === 0) return;
 

@@ -32,7 +32,7 @@ void main(){
     vec2 p = gl_FragCoord.xy;
     p.y = uResolution.y - p.y;
 
-    vec3 col = vec3(1.0, 1.0, 1.0);
+    vec3 col = vec3(0.0, 0.0, 0.0);
 
     col = drawTapestry(p, col);
 

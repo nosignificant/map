@@ -2,10 +2,13 @@ import p5 from "p5";
 import { CheckerGrid, VSensor } from "./Util/types";
 import { GRID, CANVAS, TIME } from "./Util/constant";
 import { fullGrid, checkerboard } from "./drawings/checkerboard";
-import { initVSensor, updateDistStep, updateVSensor, updateConnection } from "./sensors/vSensor";
+import { updateDistStep, updateVSensor, updateConnection, path2AndFilter } from "./sensors/vSensor";
+import { initVSensorStore } from "./Util/vSensorStore";
 import { computePos4Shader, shaderCobine } from "./Util/shaderUtil";
-import { drawFABRIK, initTentacle, tenOccupied, drawOccupiedMeta, drawOccupied } from "./drawings/tentacles";
+import { drawFABRIK, initTentacle, tenOccupied } from "./drawings/tentacles";
 import { playToneFromPos } from "./sensors/tSensor";
+import { sSensor, initSSensor, randomizeSSensor } from "./Util/sSensorStore";
+import { drawSonarHalf, SONAR_R } from "./drawings/sonar";
 
 export function Sketch(container: HTMLElement) {
   let fg: CheckerGrid[];
@@ -13,6 +16,7 @@ export function Sketch(container: HTMLElement) {
   let vSensor: VSensor[];
   let sketchShader: p5.Shader;
   let noiseTex: p5.Image;
+  let sonarGfx: p5.Graphics;
   const units: p5.Image[] = [];
   const sensorPos: number[] = [];
   //아두이노
@@ -32,13 +36,18 @@ export function Sketch(container: HTMLElement) {
     p.setup = async () => {
       p.createCanvas(CANVAS, CANVAS, p.WEBGL);
       p.pixelDensity(1);
+      sonarGfx = p.createGraphics(CANVAS, CANVAS);
+      initSSensor();
+
+      // 우클릭 컨텍스트 메뉴 차단
+      (p.canvas as HTMLCanvasElement).oncontextmenu = (e) => e.preventDefault();
 
       // checker init
       checker = checkerboard();
       fg = fullGrid();
 
-      // vsensor init
-      vSensor = initVSensor(fg);
+      // vsensor init (메인/unit 공유 store)
+      vSensor = initVSensorStore(fg);
 
       //arduino init
       socket.onmessage = (event) => {
@@ -96,6 +105,8 @@ export function Sketch(container: HTMLElement) {
     //DRAW//
     p.draw = () => {
       if (!checker || !vSensor || !sketchShader || !noiseTex) return;
+
+      p.background(0);
 
       // vSensor 상태 업데이트
       updateVSensor(p, vSensor, checker, TIME);
@@ -155,6 +166,20 @@ export function Sketch(container: HTMLElement) {
       p.rect(-CANVAS / 2, -CANVAS / 2, CANVAS, CANVAS);
       p.resetShader();
 
+      // 테두리
+      p.noFill();
+      p.stroke(255);
+      p.strokeWeight(2);
+      p.rect(-CANVAS / 2, -CANVAS / 2, CANVAS, CANVAS);
+
+      // 소나 오버레이: P2D 버퍼에 그린 뒤 이미지로 합성
+      sonarGfx.clear();
+      sonarGfx.translate(CANVAS / 2, CANVAS / 2);
+      sonarGfx.scale(CANVAS / (SONAR_R * 2));
+      drawSonarHalf(sonarGfx as unknown as p5, sSensor, false);
+      drawSonarHalf(sonarGfx as unknown as p5, sSensor, true);
+      p.image(sonarGfx, -CANVAS / 2, -CANVAS / 2);
+
       // 순비 이미지 그리기
       const nearImgs = updateDistStep(vSensor, units);
       console.log("그릴 이미지 개수:", nearImgs.length); // 조건 통과한 이미지 수
@@ -191,21 +216,54 @@ export function Sketch(container: HTMLElement) {
       }
     };
 
-    //EVENT//
-    //EVENT//
-    //EVENT//
-    //EVENT//
-    // p.mouseClicked = () => {
-    //   if (!checker || !vSensor) return;
+    //MOUSE// — native event.button 으로 구분 (0=좌, 2=우)
+    p.mousePressed = (e: MouseEvent) => {
+      if (!vSensor) return;
+      if (p.mouseX < 0 || p.mouseX > CANVAS || p.mouseY < 0 || p.mouseY > CANVAS) return;
 
-    //   const closest = snapToSensor(p, vSensor);
-    //   console.log("closest:", closest.checkerGrid.pos);
-    //   console.log("near:", closest.near);
-    //   closest.clickCount++;
-    //   closest.t = GRID * closest.clickCount;
-    //   closest.connect = findOtherSensor(p, closest, vSensor, checker);
-    //   p.loop();
-    // };
+      const button = e?.button ?? 0;
+      console.log("mousePressed button:", button, "p.mouseButton:", p.mouseButton);
+
+      if (button === 2) {
+        // 우클릭: sSensor에 랜덤 각도-거리 채우기
+        randomizeSSensor();
+        return;
+      }
+
+      // 좌클릭: 가장 가까운 vSensor strength 증가
+      let closest = vSensor[0];
+      let minDist = Infinity;
+      for (const v of vSensor) {
+        const [x, y] = v.checkerGrid.pos;
+        const d = p.dist(p.mouseX, p.mouseY, x, y);
+        if (d < minDist) {
+          minDist = d;
+          closest = v;
+        }
+      }
+      closest.strength += 100;
+      closest.t = 60; // 활성화 시간 리셋
+
+      // 클릭한 센서에서 주변 다른 센서로 connect 직접 생성 (trail 활성화)
+      const threshold = GRID * 30;
+      for (const other of vSensor) {
+        if (other === closest) continue;
+        const [ox, oy] = other.checkerGrid.pos;
+        const [cx, cy] = closest.checkerGrid.pos;
+        const d = p.dist(cx, cy, ox, oy);
+        const prob = Math.max(0, 1 - d / threshold) ** 0.3;
+        if (Math.random() > prob) continue;
+        const from: [number, number] = [cx, cy];
+        const to: [number, number] = [ox, oy];
+        closest.connect.push({
+          p1: from,
+          p2: to,
+          path: path2AndFilter(checker, from, to),
+          t: 0,
+          shrinking: false,
+        });
+      }
+    };
   }, container);
 
   return myP;
