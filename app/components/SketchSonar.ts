@@ -1,6 +1,6 @@
 import p5 from "p5";
 import { sSensor, initSSensor, randomizeSSensor } from "./Util/sSensorStore";
-import { drawSonarHalf, SONAR_R, ANGLE_STEP, MAX_CM } from "./drawings/sonar";
+import { drawSonarHalf, SONAR_R, ANGLE_STEP, MAX_CM } from "./sensors/sSensor";
 import { CANVAS } from "./Util/constant";
 
 const SIZE = CANVAS / 3;

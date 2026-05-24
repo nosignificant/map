@@ -35,9 +35,10 @@ void main(){
 
     vec3 col = vec3(0.0, 0.0, 0.0);
 
-    col = drawTapestry(p, col);
     col = drawConnections(p, col);
+    col = drawTapestry(p, col);
 
-    gl_FragColor = vec4(col, 1.0);
+    float a = max(col.r, max(col.g, col.b));
+    gl_FragColor = vec4(col, a);
 
 }

@@ -8,7 +8,7 @@ import { computePos4Shader, shaderCobine } from "./Util/shaderUtil";
 import { drawFABRIK, initTentacle, tenOccupied } from "./drawings/tentacles";
 import { playToneFromPos } from "./sensors/tSensor";
 import { sSensor, initSSensor, randomizeSSensor } from "./Util/sSensorStore";
-import { drawSonarHalf, SONAR_R } from "./drawings/sonar";
+import { drawSonarHalf, SONAR_R } from "./sensors/sSensor";
 
 export function Sketch(container: HTMLElement) {
   let fg: CheckerGrid[];
@@ -34,7 +34,7 @@ export function Sketch(container: HTMLElement) {
     //SETUP//
     //SETUP//
     p.setup = async () => {
-      p.createCanvas(CANVAS, CANVAS, p.WEBGL);
+      p.createCanvas(CANVAS, CANVAS, p.WEBGL, undefined, { alpha: true });
       p.pixelDensity(1);
       sonarGfx = p.createGraphics(CANVAS, CANVAS);
       initSSensor();
@@ -46,7 +46,7 @@ export function Sketch(container: HTMLElement) {
       checker = checkerboard();
       fg = fullGrid();
 
-      // vsensor init (메인/unit 공유 store)
+      // vsensor init
       vSensor = initVSensorStore(fg);
 
       //arduino init
@@ -72,10 +72,10 @@ export function Sketch(container: HTMLElement) {
         { once: true }
       );
 
-      //tentacle init (1~2개)
+      //tentacle init
       for (const v of vSensor) {
-        const r = Math.floor(Math.random() * 2) + 1;
-        v.tentacles = initTentacle(v, r, 100, 6);
+        //const r = Math.floor(Math.random() * 2) + 1;
+        v.tentacles = initTentacle(v, 1, 100, 6);
         console.log(v.tentacles);
         sensorPos.push(v.checkerGrid.pos[0], v.checkerGrid.pos[1]);
       }
@@ -105,8 +105,6 @@ export function Sketch(container: HTMLElement) {
     //DRAW//
     p.draw = () => {
       if (!checker || !vSensor || !sketchShader || !noiseTex) return;
-
-      p.background(0);
 
       // vSensor 상태 업데이트
       updateVSensor(p, vSensor, checker, TIME);
@@ -163,23 +161,11 @@ export function Sketch(container: HTMLElement) {
       sketchShader.setUniform("uTrail", trailFlat.slice(0, 100));
       sketchShader.setUniform("uTrailCount", endPointTrail.length);
 
+      console.log("tenCount:", tenUnique.length); // draw() 안에서
+
+      p.noStroke();
       p.rect(-CANVAS / 2, -CANVAS / 2, CANVAS, CANVAS);
       p.resetShader();
-
-      // 테두리
-      p.noFill();
-      p.stroke(255);
-      p.strokeWeight(2);
-      p.rect(-CANVAS / 2, -CANVAS / 2, CANVAS, CANVAS);
-
-      // 소나 오버레이: P2D 버퍼에 그린 뒤 이미지로 합성
-      sonarGfx.clear();
-      sonarGfx.resetMatrix();
-      sonarGfx.translate(CANVAS / 2, CANVAS / 2);
-      sonarGfx.scale(CANVAS / (SONAR_R * 2));
-      drawSonarHalf(sonarGfx as unknown as p5, sSensor, false);
-      drawSonarHalf(sonarGfx as unknown as p5, sSensor, true);
-      p.image(sonarGfx, -CANVAS / 2, -CANVAS / 2);
 
       // 순비 이미지 그리기
       const nearImgs = updateDistStep(vSensor, units);
@@ -191,7 +177,14 @@ export function Sketch(container: HTMLElement) {
           p.image(n.image, x - GRID / 2, y - GRID / 2, GRID, GRID);
         }
       }
-      console.log("tenCount:", tenUnique.length); // draw() 안에서
+      // 소나 오버레이: P2D 버퍼에 그린 뒤 이미지로 합성
+      sonarGfx.clear();
+      sonarGfx.resetMatrix();
+      sonarGfx.translate(CANVAS / 2, CANVAS / 2);
+      sonarGfx.scale(CANVAS / (SONAR_R * 2));
+      //drawSonarHalf(sonarGfx as unknown as p5, sSensor, false);
+      //drawSonarHalf(sonarGfx as unknown as p5, sSensor, true);
+      p.image(sonarGfx, -CANVAS / 2, -CANVAS / 2);
 
       const STEP_DELAY = 0.15; // 음 사이 간격 (초)
       let stepIndex = 0; // 매 프레임 재생할 때 누적되는 인덱스
