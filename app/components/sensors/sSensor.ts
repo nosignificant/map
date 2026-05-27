@@ -1,41 +1,51 @@
 import p5 from "p5";
 import { SSensor } from "../Util/types";
 
-export const ANGLE_STEP = 10; // 각도 10° 간격
+export const ANGLE_STEP = 3;
 const CELL_CM = 100; // 1 grid cell = 1m
-export const MAX_CM = 600; // vSensor 6단계에 맞춰 6개 ring
-const PX_PER_CELL = 150; // 1 cell의 픽셀 반경
+export const MAX_CM = 600;
+export const PX_PER_CELL = 150; // 1 cell의 픽셀 반경
 const MAX_CELLS = MAX_CM / CELL_CM; // = 6
 const DOT_SIZE = PX_PER_CELL * 0.3;
 
 export const SONAR_R = MAX_CELLS * PX_PER_CELL;
 
-export function drawSonarHalf(p: p5, data: SSensor[], flip: boolean) {
-  const dir = flip ? 1 : -1;
+function pad2(n: number): string {
+  return n.toString().padStart(2, "0");
+}
 
-  // 1) 폴라 그리드 — 테두리만 (흰색 ring)
-  p.noFill();
-  p.stroke(255);
-  p.strokeWeight(1);
-  for (let a = 0; a <= 180; a += ANGLE_STEP) {
-    const rad = (a * Math.PI) / 180;
-    for (let r = 1; r <= MAX_CELLS; r++) {
-      const radius = r * PX_PER_CELL;
-      p.circle(radius * Math.cos(rad), dir * radius * Math.sin(rad), DOT_SIZE);
-    }
-  }
+export type SonarItem = { pos: [number, number]; image: p5.Image };
 
-  // 3) 측정점 — 그리드 위치에 초록 채워진 원
-  p.noStroke();
-  p.fill(0, 255, 0);
+export function updateSSensorImage(data: SSensor[], dir: -1 | 1, sUnits: Map<string, p5.Image>, scale: number): SonarItem[] {
+  const items: SonarItem[] = [];
   for (const s of data) {
+    if (s.angle < 0 || s.angle > 180) continue;
+    if (s.distance < 15 || s.distance > MAX_CM) continue;
     const snapAngle = Math.round(s.angle / ANGLE_STEP) * ANGLE_STEP;
-    const cells = Math.round(s.distance / CELL_CM);
-    if (cells < 1 || cells > MAX_CELLS) continue;
-    if (snapAngle < 0 || snapAngle > 180) continue;
-
-    const rad = (snapAngle * Math.PI) / 180;
-    const radius = cells * PX_PER_CELL;
-    p.circle(radius * Math.cos(rad), dir * radius * Math.sin(rad), DOT_SIZE);
+    const img = getSSensorImage(snapAngle, s.distance, sUnits);
+    if (!img) continue;
+    const rad = (s.angle * Math.PI) / 180;
+    const radius = (s.distance / CELL_CM) * PX_PER_CELL * scale;
+    items.push({ pos: [-Math.cos(rad) * radius, dir * Math.sin(rad) * radius], image: img });
   }
+  return items;
+}
+
+function randomUnit(sUnits: Map<string, p5.Image>, folder: string, prefix: string, count: number): p5.Image | null {
+  const idx = Math.floor(Math.random() * count) + 1;
+  return sUnits.get(`/units/sSensor/${folder}/${prefix}_${idx}.png`) ?? null;
+}
+
+//거리 별 이미지
+export function getSSensorImage(angle: number, distance: number, sUnits: Map<string, p5.Image>): p5.Image | null {
+  if (distance >= 405 && distance <= 600) return randomUnit(sUnits, "a", "A", 15);
+  if (distance >= 210 && distance <= 404) return randomUnit(sUnits, "b", "B", 15);
+  if (distance >= 15 && distance <= 209) {
+    const seed = Math.floor(angle / 3);
+    const bar = seed % 2;
+    const flag = (seed + 1) % 3;
+    const variation = Math.floor(Math.random() * 6);
+    return sUnits.get(`/units/sSensor/c/d${pad2(seed)}_b${bar}_f${flag}_v${variation}.png`) ?? null;
+  }
+  return null;
 }

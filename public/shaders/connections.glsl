@@ -28,6 +28,13 @@ vec3 drawConnections(vec2 p, vec3 col) {
   float b = ring(p, uEndPoint, uGrid * 0.3, 1.5);
   col = mix(col, vec3(0.0), b);
 
+  for (int i = 0; i < 50; i++) {
+    if (i >= uTrailCount) break;
+    float fade = 1.0 - float(i) / float(uTrailCount);
+    float t = ring(p, uTrail[i], uGrid * 0.15, 1.0);
+    col = mix(col, vec3(0.0), t * fade);
+  }
+
   return col;
 }
 

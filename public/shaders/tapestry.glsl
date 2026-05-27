@@ -44,14 +44,14 @@ vec3 drawTapestry(vec2 p, vec3 col) {
       float n = texture2D(uNoise, noiseUV).r;
       float prob = 0.5 * (1.0 - (-minBoxSDF) / uGrid);
       if (n < prob) {
-        col = mix(col, vec3(0, 0, 0), cross);
+        col = mix(col, vec3(0, 0, 255), cross);
       }
     }
-    col = mix(col, vec3(0, 0, 0), metaEdge);
+    col = mix(col, vec3(0, 0, 255), metaEdge);
     return col;
   }
 
-  col = mix(col, vec3(0, 0, 0), metaEdge);
+  col = mix(col, vec3(0, 0, 255), metaEdge);
 
   return col;
 }

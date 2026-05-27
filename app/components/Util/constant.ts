@@ -6,18 +6,49 @@ export const MG = GRID / 2;
 export const rows = CANVAS / GRID;
 export const cols = CANVAS / GRID;
 
-//CHECKER BOARD CENTER
-export const CENTER = CANVAS / 2;
-export const CORNER = [
-  [0, 0],
-  [0, CANVAS],
-  [CANVAS / 2, 0],
-  [0, CANVAS / 2],
-  [CANVAS / 2, CANVAS],
-  [CANVAS, CANVAS / 2],
-  [CANVAS, 0],
-  [CANVAS, CANVAS],
+export const STEP_OFFSETS: [number, number][][] = [
+  [[0, 0]], // 1단계
+  [
+    [0, -1],
+    [0, 1],
+    [-1, 0],
+    [1, 0],
+  ], // 2단계: 십자
+  [
+    [1, 1],
+    [1, -1],
+    [-1, -1],
+    [-1, 1],
+  ], // 3단계: 대각
+  [
+    [0, -2],
+    [0, 2],
+    [-2, 0],
+    [2, 0],
+  ], // 4단계: 십자 2칸
+  [
+    [1, -2],
+    [1, 2],
+    [2, -1],
+    [2, 1],
+    [-1, -2],
+    [-1, 2],
+    [-2, -1],
+    [-2, 1],
+  ], // 5단계
+  [
+    [0, -3],
+    [0, 3],
+    [-3, 0],
+    [3, 0], // 십자 3칸
+    [2, 2],
+    [2, -2],
+    [-2, 2],
+    [-2, -2], // 대각 2칸
+  ], // 6단계
 ];
 export const TIME = 0.1;
 
 export const SPEED = 0.5;
+
+export const IMAGE_HISTORY_MAX = 10;

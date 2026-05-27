@@ -1,26 +1,21 @@
 import p5 from "p5";
-import { CheckerGrid, VSensor } from "./Util/types";
 import { GRID, CANVAS, TIME } from "./Util/constant";
-import { fullGrid, checkerboard } from "./drawings/checkerboard";
-import { updateDistStep, updateVSensor, updateConnection, path2AndFilter } from "./sensors/vSensor";
-import { initVSensorStore } from "./Util/vSensorStore";
+import { checkerboard } from "./drawings/checkerboard";
+import { updateVsensorImage, updateVSensor, updateConnection } from "./sensors/vSensor";
+import { fg, vSensor, sSensor1, sSensor2, randomizeSSensor, initArduino } from "./Arduino";
 import { computePos4Shader, shaderCobine } from "./Util/shaderUtil";
+import { vSensorUnits, sSensorUnits, initImages } from "./Util/imageStore";
 import { drawFABRIK, initTentacle, tenOccupied } from "./drawings/tentacles";
 import { playToneFromPos } from "./sensors/tSensor";
-import { sSensor, initSSensor, randomizeSSensor } from "./Util/sSensorStore";
-import { drawSonarHalf, SONAR_R } from "./sensors/sSensor";
+import { SONAR_R, updateSSensorImage, PX_PER_CELL } from "./sensors/sSensor";
+import { CheckerGrid, VSensor } from "./Util/types";
 
 export function Sketch(container: HTMLElement) {
-  let fg: CheckerGrid[];
   let checker: CheckerGrid[];
-  let vSensor: VSensor[];
   let sketchShader: p5.Shader;
   let noiseTex: p5.Image;
   let sonarGfx: p5.Graphics;
-  const units: p5.Image[] = [];
   const sensorPos: number[] = [];
-  //아두이노
-  const socket = new WebSocket("ws://localhost:8080");
   //웹 소리
   let audioCtx: AudioContext;
   const lastTargetTime = new Map<string, number>(); // tentacle별 마지막 재생 시각
@@ -37,31 +32,13 @@ export function Sketch(container: HTMLElement) {
       p.createCanvas(CANVAS, CANVAS, p.WEBGL, undefined, { alpha: true });
       p.pixelDensity(1);
       sonarGfx = p.createGraphics(CANVAS, CANVAS);
-      initSSensor();
+      initArduino();
 
       // 우클릭 컨텍스트 메뉴 차단
       (p.canvas as HTMLCanvasElement).oncontextmenu = (e) => e.preventDefault();
 
       // checker init
       checker = checkerboard();
-      fg = fullGrid();
-
-      // vsensor init
-      vSensor = initVSensorStore(fg);
-
-      //arduino init
-      socket.onmessage = (event) => {
-        const data = event.data.trim();
-        const parts = data.split(":");
-        const sensorId = parseInt(parts[0].replace("piezo", "")) - 1;
-        const val = parseInt(parts[1]);
-
-        //console.log("sensorId:", sensorId, "val:", val);
-
-        if (vSensor[sensorId]) {
-          vSensor[sensorId].strength = val;
-        }
-      };
 
       //웹 소리 객체 init
       window.addEventListener(
@@ -74,7 +51,6 @@ export function Sketch(container: HTMLElement) {
 
       //tentacle init
       for (const v of vSensor) {
-        //const r = Math.floor(Math.random() * 2) + 1;
         v.tentacles = initTentacle(v, 1, 100, 6);
         console.log(v.tentacles);
         sensorPos.push(v.checkerGrid.pos[0], v.checkerGrid.pos[1]);
@@ -84,15 +60,7 @@ export function Sketch(container: HTMLElement) {
       noiseTex = await p.loadImage("/img/noiseTex.png");
 
       //img init
-      fetch("/api/img")
-        .then((res) => res.json())
-        .then((urls: string[]) => {
-          urls.forEach((url) => {
-            p.loadImage(url, (loadedImg) => {
-              units.push(loadedImg);
-            });
-          });
-        });
+      initImages(p);
 
       //shader init
       const s = await shaderCobine();
@@ -104,10 +72,11 @@ export function Sketch(container: HTMLElement) {
     //DRAW//
     //DRAW//
     p.draw = () => {
-      if (!checker || !vSensor || !sketchShader || !noiseTex) return;
+      if (!checker || !sketchShader || !noiseTex) return;
+      p.clear();
 
       // vSensor 상태 업데이트
-      updateVSensor(p, vSensor, checker, TIME);
+      updateVSensor(vSensor, TIME);
 
       //연결점들 , segment float로 분리
       const [segFlat, endPoint, realSegCount] = updateConnection(vSensor, fg);
@@ -120,11 +89,11 @@ export function Sketch(container: HTMLElement) {
       const tenUnique = tOccupied.filter((pos, i) => tOccupied.findIndex((p) => p[0] === pos[0] && p[1] === pos[1]) === i);
       const tenFlat = tenUnique.flatMap(([x, y]) => [x, y]);
 
-      // sensor 상태 추출해서 쉐이더에 보내기
-      const sensorT: number[] = [];
+      // Vsensor T
+      const vSensorT: number[] = [];
 
       for (const v of vSensor) {
-        sensorT.push(v.t);
+        vSensorT.push(v.t);
       }
 
       // 셰이더 실행
@@ -137,7 +106,7 @@ export function Sketch(container: HTMLElement) {
       sketchShader.setUniform("uNoise", noiseTex);
       //센서 위치, 센서 시간
       sketchShader.setUniform("uSensorPos", sensorPos);
-      sketchShader.setUniform("uSensorT", sensorT.slice(0, 25));
+      sketchShader.setUniform("uSensorT", vSensorT.slice(0, 25));
       //센서 개수
       sketchShader.setUniform("uSensorCount", vSensor.length);
       //그려야 하는 선 개수
@@ -148,7 +117,7 @@ export function Sketch(container: HTMLElement) {
       sketchShader.setUniform("uEndPoint", [endPoint[0], endPoint[1]]);
 
       //나머지 - 촉수 없는 위치 점
-      sketchShader.setUniform("uTenOccupied", tenFlat.slice(0, 400)); // vec2 200개
+      sketchShader.setUniform("uTenOccupied", tenFlat.slice(0, 400));
       sketchShader.setUniform("uTenCount", Math.min(tenUnique.length, 200));
 
       // trail
@@ -161,30 +130,26 @@ export function Sketch(container: HTMLElement) {
       sketchShader.setUniform("uTrail", trailFlat.slice(0, 100));
       sketchShader.setUniform("uTrailCount", endPointTrail.length);
 
-      console.log("tenCount:", tenUnique.length); // draw() 안에서
-
       p.noStroke();
       p.rect(-CANVAS / 2, -CANVAS / 2, CANVAS, CANVAS);
       p.resetShader();
 
       // 순비 이미지 그리기
-      const nearImgs = updateDistStep(vSensor, units);
-      console.log("그릴 이미지 개수:", nearImgs.length); // 조건 통과한 이미지 수
-
+      const nearImgs = updateVsensorImage(vSensor, vSensorUnits);
       for (const n of nearImgs) {
         for (const pos of n.pos) {
           const [x, y] = computePos4Shader(pos);
           p.image(n.image, x - GRID / 2, y - GRID / 2, GRID, GRID);
         }
       }
-      // 소나 오버레이: P2D 버퍼에 그린 뒤 이미지로 합성
-      sonarGfx.clear();
-      sonarGfx.resetMatrix();
-      sonarGfx.translate(CANVAS / 2, CANVAS / 2);
-      sonarGfx.scale(CANVAS / (SONAR_R * 2));
-      //drawSonarHalf(sonarGfx as unknown as p5, sSensor, false);
-      //drawSonarHalf(sonarGfx as unknown as p5, sSensor, true);
-      p.image(sonarGfx, -CANVAS / 2, -CANVAS / 2);
+      // 소나 이미지 오버레이
+      const sonarScale = CANVAS / (SONAR_R * 2);
+      const cellPx = PX_PER_CELL * sonarScale;
+      for (const item of updateSSensorImage(sSensor1, -1, sSensorUnits, sonarScale))
+        p.image(item.image, item.pos[0] - cellPx / 2, item.pos[1] - cellPx / 2, cellPx, cellPx);
+
+      for (const item of updateSSensorImage(sSensor2, 1, sSensorUnits, sonarScale))
+        p.image(item.image, item.pos[0] - cellPx / 2, item.pos[1] - cellPx / 2, cellPx, cellPx);
 
       const STEP_DELAY = 0.15; // 음 사이 간격 (초)
       let stepIndex = 0; // 매 프레임 재생할 때 누적되는 인덱스
@@ -210,7 +175,6 @@ export function Sketch(container: HTMLElement) {
       }
     };
 
-    //MOUSE// — native event.button 으로 구분 (0=좌, 2=우)
     p.mousePressed = (e: MouseEvent) => {
       if (!vSensor) return;
       if (p.mouseX < 0 || p.mouseX > CANVAS || p.mouseY < 0 || p.mouseY > CANVAS) return;
@@ -236,27 +200,7 @@ export function Sketch(container: HTMLElement) {
         }
       }
       closest.strength += 100;
-      closest.t = 60; // 활성화 시간 리셋
-
-      // 클릭한 센서에서 주변 다른 센서로 connect 직접 생성 (trail 활성화)
-      const threshold = GRID * 30;
-      for (const other of vSensor) {
-        if (other === closest) continue;
-        const [ox, oy] = other.checkerGrid.pos;
-        const [cx, cy] = closest.checkerGrid.pos;
-        const d = p.dist(cx, cy, ox, oy);
-        const prob = Math.max(0, 1 - d / threshold) ** 0.3;
-        if (Math.random() > prob) continue;
-        const from: [number, number] = [cx, cy];
-        const to: [number, number] = [ox, oy];
-        closest.connect.push({
-          p1: from,
-          p2: to,
-          path: path2AndFilter(checker, from, to),
-          t: 0,
-          shrinking: false,
-        });
-      }
+      closest.t = 60;
     };
   }, container);
 

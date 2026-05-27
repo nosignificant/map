@@ -117,9 +117,9 @@ export function drawFABRIK(p: p5, t: Tentacle, time: number, endPoint?: [number,
 
   // endPoint를 향하고 있으면 다른 색/두께
   const isTargetingEndPoint = t.target && endPoint && t.target[0] === endPoint[0] && t.target[1] === endPoint[1];
-  const lineColor: [number, number, number] = isTargetingEndPoint ? [255, 100, 100] : [100, 100, 100];
-  const lineWeight = isTargetingEndPoint ? 2.5 : 1.5;
-  const pointSize = isTargetingEndPoint ? 4 : 3;
+  const lineColor: [number, number, number] = isTargetingEndPoint ? [255, 255, 255] : [0, 0, 0];
+  const lineWeight = 15;
+  const pointSize = 5;
 
   // 촉수 선 그리기
   p.strokeWeight(lineWeight);

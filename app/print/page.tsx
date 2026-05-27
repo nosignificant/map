@@ -16,16 +16,7 @@ export default function PrintPage() {
       }}
     >
       <div className="invert-wrap">
-        <div className="overlay-stage">
-          {/* 아래 레이어: sonar */}
-          <div>
-            <P5SketchLoader sketchName="sonar" />
-          </div>
-          {/* 위 레이어: unit (screen 블렌딩으로 겹침) */}
-          <div className="layer-top">
-            <P5SketchLoader sketchName="unit" />
-          </div>
-        </div>
+        <P5SketchLoader sketchName="print" />
       </div>
     </div>
   );

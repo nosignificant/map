@@ -3,21 +3,9 @@ import p5 from "p5";
 export type Pos = { x: number; y: number };
 export type Grid = { ci: number; ri: number };
 
-//svg morphing
-
-export type Sign = {
-  morphFn: MorphFn;
-  grow: number;
-  //cooldown은 숫자 입력한 거 다 까지면 shrink로 넘어감
-  cooldown: number;
-  maxCool: number;
-  shrink: number;
-  repeat: number;
-};
-export type MorphFn = (t: number) => [number, number][];
-
 // check pattern
 export type CheckerGrid = { grid: Grid; pos: [number, number] };
+export type CheckerGridFreq = CheckerGrid & { freq: number };
 
 //마우스 지정한 blackboard 중심지마다 n초씩 추가해서 강도 강하게 원그리기? - 시간 지나면 원 줄어들게 하기?
 export type VSensor = {
@@ -42,6 +30,7 @@ export type SSensor = {
 export type CheckerDistStep = {
   pos: [number, number][];
   image: p5.Image;
+  stage: number;
 };
 export type Connect = {
   p1: [number, number];

@@ -1,6 +1,6 @@
 import type p5 from "p5";
 import { CheckerGrid, VSensor, CheckerDistStep, Connect } from "../Util/types";
-import { GRID, TIME, SPEED } from "../Util/constant";
+import { GRID, TIME, SPEED, STEP_OFFSETS } from "../Util/constant";
 import { drawCircleCross } from "../drawings/drawings";
 import { findPath } from "../Util/BFS";
 
@@ -54,7 +54,8 @@ export function initVSensor(checker: CheckerGrid[]): VSensor[] {
 //update//
 //update//
 //update//
-export function updateVSensor(p: p5, vSensors: VSensor[], checker: CheckerGrid[], time: number) {
+
+export function updateVSensor(vSensors: VSensor[], time: number) {
   for (const v of vSensors) {
     v.t -= time;
   }
@@ -83,50 +84,8 @@ export function snapToSensor(p: p5, src: VSensor[]): VSensor {
   return closest;
 }
 
-const STEP_OFFSETS: [number, number][][] = [
-  [[0, 0]], // 1단계
-  [
-    [0, -1],
-    [0, 1],
-    [-1, 0],
-    [1, 0],
-  ], // 2단계: 십자
-  [
-    [1, 1],
-    [1, -1],
-    [-1, -1],
-    [-1, 1],
-  ], // 3단계: 대각
-  [
-    [0, -2],
-    [0, 2],
-    [-2, 0],
-    [2, 0],
-  ], // 4단계: 십자 2칸
-  [
-    [1, -2],
-    [1, 2],
-    [2, -1],
-    [2, 1],
-    [-1, -2],
-    [-1, 2],
-    [-2, -1],
-    [-2, 1],
-  ], // 5단계
-  [
-    [0, -3],
-    [0, 3],
-    [-3, 0],
-    [3, 0], // 십자 3칸
-    [2, 2],
-    [2, -2],
-    [-2, 2],
-    [-2, -2], // 대각 2칸
-  ], // 6단계
-];
-
 //순비 이미지 그리기
-export function updateDistStep(vSensor: VSensor[], units: p5.Image[]) {
+export function updateVsensorImage(vSensor: VSensor[], units: p5.Image[]) {
   const near: CheckerDistStep[] = [];
   if (units.length === 0) return near;
 
@@ -147,7 +106,7 @@ export function updateDistStep(vSensor: VSensor[], units: p5.Image[]) {
           allPos.push([x + dx * GRID, y + dy * GRID]);
         }
       }
-      near.push({ pos: allPos, image });
+      near.push({ pos: allPos, image, stage: s });
     }
   }
   return near;
@@ -276,6 +235,20 @@ export function updateConnection(vSensor: VSensor[], fg?: CheckerGrid[]): [numbe
   }
 
   for (const v of vSensor) {
+    // strength가 있고 connect가 없으면 자동 생성
+    if (v.strength > 0 && v.connect.length === 0 && fg) {
+      const threshold = GRID * 30;
+      for (const other of vSensor) {
+        if (other === v) continue;
+        const d = Math.hypot(v.checkerGrid.pos[0] - other.checkerGrid.pos[0], v.checkerGrid.pos[1] - other.checkerGrid.pos[1]);
+        const prob = Math.max(0, 1 - d / threshold) ** 0.3;
+        if (Math.random() > prob) continue;
+        const from: [number, number] = [v.checkerGrid.pos[0], v.checkerGrid.pos[1]];
+        const to: [number, number] = [other.checkerGrid.pos[0], other.checkerGrid.pos[1]];
+        v.connect.push({ p1: from, p2: to, path: path2AndFilter(fg, from, to), t: 0, shrinking: false });
+      }
+    }
+
     let vEnd: [number, number] | null = null;
     for (const c of v.connect) {
       if (c.path.length === 0) continue;
