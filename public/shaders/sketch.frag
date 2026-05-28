@@ -12,17 +12,13 @@ uniform vec2 uSensorPos[25];
 //센서 개수 
 uniform int uSensorCount;
 
-//경로 
+//경로
 uniform vec2 uSegments[100];
 uniform int uSegmentCount;
-uniform vec2 uEndPoint;
 
-//tentacle이 차지하고 있는 위치 
+//tentacle이 차지하고 있는 위치
 uniform vec2 uTenOccupied[200];
 uniform int uTenCount;
-
-uniform vec2 uTrail[50];
-uniform int uTrailCount;
 
 // #include sdf.glsl
 // #include connections.glsl

@@ -1,8 +1,8 @@
 import p5 from "p5";
-import { Tentacle, VSensor, CheckerGrid } from "../Util/types";
+import { Tentacle, VSensor, CheckerGrid, Accumulate } from "../Util/types";
 import { computePos4Shader } from "../Util/shaderUtil";
 import { snapToCheck } from "./checkerboard";
-import { GRID } from "../Util/constant";
+import { STEP_OFFSETS, GRID, TIME } from "../Util/constant";
 
 export function initTentacle(vSensor: VSensor, count: number, length: number, partCount: number): Tentacle[] {
   const tens: Tentacle[] = [];
@@ -27,8 +27,6 @@ export function initTentacle(vSensor: VSensor, count: number, length: number, pa
       parts,
       target: null,
       t: 0,
-      angle: angle,
-      isFollowing: false,
       speed: Math.random() * 0.04 + 0.02,
       phase: Math.random() * Math.PI * 2,
       // -30 ~ 30 정도, 음수/양수면 휘는 방향 다름
@@ -39,7 +37,6 @@ export function initTentacle(vSensor: VSensor, count: number, length: number, pa
   return tens;
 }
 
-//target이 있을 때 할 행동
 export function FABRIK(p: p5, t: Tentacle): [number, number][] {
   if (t.target == null) return [];
   const startToTarget = p.dist(t.startPos[0], t.startPos[1], t.target[0], t.target[1]);
@@ -48,14 +45,15 @@ export function FABRIK(p: p5, t: Tentacle): [number, number][] {
   // 길이 유지하면서 새 배열
   const newParts: [number, number][] = t.parts.map((q) => [q[0], q[1]]);
 
+  // start → target 방향 각도 (라디안)
+  const angle = Math.atan2(t.target[1] - t.startPos[1], t.target[0] - t.startPos[0]);
   // 각 파트마다 위상 다르게 좌우(수직 방향)로 흔들기
-  const perp: [number, number] = [-Math.sin(t.angle), Math.cos(t.angle)]; // angle 방향에 수직
+  const perp: [number, number] = [-Math.sin(angle), Math.cos(angle)]; // angle 방향에 수직
   const amp = 5; // 흔들림 크기
 
   // 끝점은 타겟으로 고정
   newParts[newParts.length - 1] = [t.target[0], t.target[1]];
 
-  // 끝에서 시작 쪽으로 (parts[0]은 startPos니까 1까지만)
   for (let i = newParts.length - 2; i >= 1; i--) {
     const cur = new p5.Vector(newParts[i][0], newParts[i][1]);
     const low = new p5.Vector(newParts[i + 1][0], newParts[i + 1][1]);
@@ -86,52 +84,58 @@ export function FABRIK(p: p5, t: Tentacle): [number, number][] {
   return newParts;
 }
 
-// target == null 일때 할 행동
-export function FABRIKswimm(p: p5, t: Tentacle): [number, number][] {
-  if (t.target != null) return [];
-  const swingAngle = t.angle + Math.sin(p.frameCount * t.speed + t.phase) * 0.3;
-  const swingTarget: [number, number] = [
-    t.startPos[0] + Math.cos(swingAngle) * t.defaultLength,
-    t.startPos[1] + Math.sin(swingAngle) * t.defaultLength,
-  ];
-  const original = t.target;
-  t.target = swingTarget;
-  const body = FABRIK(p, t);
-  t.target = original;
+export function updateTentacle(vSensorAccumulate: Accumulate[], vSensor: VSensor) {
+  for (const t of vSensor.tentacles) {
+    for (const a of vSensorAccumulate) {
+      const dx = a.pos[0] - vSensor.checkerGrid.pos[0];
+      const dy = a.pos[1] - vSensor.checkerGrid.pos[1];
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if (d > t.defaultLength * 2) continue;
 
-  return body;
-}
+      if (t.t > 0) continue;
 
-export function FABRIKsetTarget(vSensor: VSensor) {
-  if (vSensor.connect == null) {
-    vSensor.tenTarget = null;
-    for (const t of vSensor.tentacles) {
+      if (a.freq <= 1) {
+        //1~6중 랜덤 1택
+        const randStage = Math.floor(Math.random() * STEP_OFFSETS.length);
+        const randPoss = STEP_OFFSETS[randStage];
+        const [x, y] = randPoss[Math.floor(Math.random() * randPoss.length)];
+
+        t.target = [a.pos[0] + x * GRID, a.pos[1] + y * GRID];
+        //10초가 될라나?
+        t.t = Math.floor(Math.random() * 10);
+      } else {
+        const idx = Math.min(Math.floor(a.freq / 10), STEP_OFFSETS.length - 1);
+        const reverseStage = STEP_OFFSETS.length - 1 - idx;
+        const randPoss = STEP_OFFSETS[reverseStage];
+        const [x, y] = randPoss[Math.floor(Math.random() * randPoss.length)];
+
+        t.target = [a.pos[0] + x * GRID, a.pos[1] + y * GRID];
+        t.t = a.freq * 60;
+      }
     }
   }
+  for (const t of vSensor.tentacles) t.t -= TIME;
 }
 
-export function drawFABRIK(p: p5, t: Tentacle, time: number, endPoint?: [number, number]) {
-  t.t += time;
-  const newParts = t.target != null ? FABRIK(p, t) : FABRIKswimm(p, t);
+export function drawFABRIK(p: p5, t: Tentacle) {
+  if (t.target == null) return;
+
+  const newParts = FABRIK(p, t);
   if (newParts.length > 0) t.parts = newParts;
 
-  // endPoint를 향하고 있으면 다른 색/두께
-  const isTargetingEndPoint = t.target && endPoint && t.target[0] === endPoint[0] && t.target[1] === endPoint[1];
-  const lineColor: [number, number, number] = isTargetingEndPoint ? [255, 255, 255] : [0, 0, 0];
+  const lineColor = [0, 0, 0];
   const lineWeight = 15;
   const pointSize = 5;
 
-  // 촉수 선 그리기
   p.strokeWeight(lineWeight);
-  p.stroke(...lineColor);
+  p.stroke(lineColor);
   for (let i = 0; i < t.parts.length - 1; i++) {
     const [x1, y1] = computePos4Shader(t.parts[i]);
     const [x2, y2] = computePos4Shader(t.parts[i + 1]);
     p.line(x1, y1, x2, y2);
   }
 
-  // 촉수 점들
-  p.fill(...lineColor);
+  p.fill(lineColor);
   for (const b of t.parts) {
     const [x, y] = computePos4Shader(b);
     p.circle(x, y, pointSize);

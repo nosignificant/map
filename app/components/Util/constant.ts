@@ -47,8 +47,10 @@ export const STEP_OFFSETS: [number, number][][] = [
     [-2, -2], // 대각 2칸
   ], // 6단계
 ];
+//time
+export const INITtime = 60;
 export const TIME = 0.1;
 
-export const SPEED = 0.5;
+export const TRAIL_SPEED = 0.5;
 
 export const IMAGE_HISTORY_MAX = 10;

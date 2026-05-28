@@ -1,8 +1,9 @@
 import type p5 from "p5";
-import { CheckerGrid, VSensor, CheckerDistStep, Connect } from "../Util/types";
-import { GRID, TIME, SPEED, STEP_OFFSETS } from "../Util/constant";
-import { drawCircleCross } from "../drawings/drawings";
+import { CheckerGrid, VSensor, VsensorImagePos, Connect } from "../Util/types";
+import { GRID, TIME, TRAIL_SPEED, STEP_OFFSETS } from "../Util/constant";
 import { findPath } from "../Util/BFS";
+import { vSensorUnits } from "../Util/imageStore";
+import { updateHistoryArr } from "../SketchHistory";
 
 export function initVSensor(checker: CheckerGrid[]): VSensor[] {
   const result: VSensor[] = [];
@@ -22,11 +23,10 @@ export function initVSensor(checker: CheckerGrid[]): VSensor[] {
         checkerGrid: { grid: { ri: row.ri, ci: col.ci }, pos: [col.x, row.y] },
         near: [],
         clickCount: 0,
-        t: 60,
-        connect: [],
+        connect: { p1: [0, 0], p2: [0, 0], path: [], t: 0, shrinking: false },
         tentacles: [],
-        tenTarget: null,
         strength: 0,
+        currentStage: 0,
       });
     }
   }
@@ -51,26 +51,15 @@ export function initVSensor(checker: CheckerGrid[]): VSensor[] {
   return result;
 }
 
-//update//
-//update//
-//update//
-
-export function updateVSensor(vSensors: VSensor[], time: number) {
-  for (const v of vSensors) {
-    v.t -= time;
-  }
-}
-
 export function snapToSensor(p: p5, src: VSensor[]): VSensor {
   let closest: VSensor = {
     checkerGrid: { grid: { ri: 0, ci: 0 }, pos: [0, 0] },
     near: [],
     clickCount: 0,
-    t: 0,
-    connect: [],
+    connect: { p1: [0, 0], p2: [0, 0], path: [], t: 0, shrinking: false },
     tentacles: [],
-    tenTarget: null,
     strength: 0,
+    currentStage: 0,
   };
   let minDist: number = Infinity;
   for (const c of src) {
@@ -85,23 +74,26 @@ export function snapToSensor(p: p5, src: VSensor[]): VSensor {
 }
 
 //순비 이미지 그리기
-export function updateVsensorImage(vSensor: VSensor[], units: p5.Image[]) {
-  const near: CheckerDistStep[] = [];
-  if (units.length === 0) return near;
+export function updateVsensorImage(vSensor: VSensor[]) {
+  const near: VsensorImagePos[] = [];
+  if (vSensorUnits.length === 0) return near;
 
   for (const v of vSensor) {
     const [x, y] = v.checkerGrid.pos;
     if (v.strength <= 0) continue;
 
-    const stageCount = Math.min(Math.floor(v.strength / 100), STEP_OFFSETS.length);
-    if (stageCount === 0) continue;
-
-    // 단계 s마다: 0~s 누적 위치에 units[s] 이미지 → 이전 위치에 여러 이미지 겹침
-    for (let s = 0; s < stageCount; s++) {
-      const image = units[s % units.length];
+    const stage = Math.min(Math.floor(v.strength / 100), STEP_OFFSETS.length);
+    if (stage === 0) continue;
+    if (stage !== v.currentStage) {
+      updateHistoryArr(stage);
+      v.currentStage = stage;
+    }
+    for (let s = 0; s < stage; s++) {
+      const image = vSensorUnits[s % vSensorUnits.length];
       if (!image) continue;
       const allPos: [number, number][] = [];
       for (let p = 0; p <= s; p++) {
+        //단계별 위치 추가
         for (const [dx, dy] of STEP_OFFSETS[p]) {
           allPos.push([x + dx * GRID, y + dy * GRID]);
         }
@@ -110,50 +102,6 @@ export function updateVsensorImage(vSensor: VSensor[], units: p5.Image[]) {
     }
   }
   return near;
-}
-
-export function vSensored(p: p5, src: VSensor[]) {
-  if (!src || src.length === 0) return;
-
-  for (const c of src) {
-    const [x, y] = [c.checkerGrid.pos[0], c.checkerGrid.pos[1]];
-
-    if (c.clickCount > 0) {
-      p.circle(x, y, GRID + c.t * 2);
-    }
-  }
-}
-
-export function findOtherSensor(p: p5, me: VSensor, src: VSensor[], checker: CheckerGrid[]): Connect[] {
-  const connect: Connect[] = [];
-  const threshold = GRID * 30;
-  for (const other of src) {
-    if (me === other) continue;
-    const d = p.dist(me.checkerGrid.pos[0], me.checkerGrid.pos[1], other.checkerGrid.pos[0], other.checkerGrid.pos[1]);
-    const prob = Math.max(0, 1 - d / threshold) ** 0.1;
-
-    //멀리 있는 다른 진동 센서 선택
-    const wantConnectSensor = Math.random() < prob;
-    if (wantConnectSensor) {
-      //다른 진동센서의 반경 안에 연결될 위치 선택
-      for (const n of me.near) {
-        for (const otherN of other.near) {
-          const r = Math.random() * n.pos.length;
-          const [x, y] = n.pos[r];
-          const [ox, oy] = otherN.pos[r];
-          const d = p.dist(x, y, ox, oy);
-          const prob = Math.max(0, 1 - d / threshold) ** 8;
-          const wantConnectCheck = Math.random() < prob;
-          if (wantConnectCheck) {
-            const contained = connect.find((c) => c.p1[0] === x && c.p1[1] === y);
-            if (contained) continue;
-            connect.push({ p1: [x, y], p2: [ox, oy], path: path2AndFilter(checker, [x, y], [ox, oy]), t: 0, shrinking: false });
-          }
-        }
-      }
-    }
-  }
-  return connect;
 }
 
 export function path2AndFilter(checker: CheckerGrid[], from: [number, number], to: [number, number]) {
@@ -172,138 +120,53 @@ export function path2AndFilter(checker: CheckerGrid[], from: [number, number], t
   return findPath(filt, from, to);
 }
 
-export function drawConnections(p: p5, src: Connect[], checker: CheckerGrid[]) {
-  p.stroke(0, 0, 255);
+export function updateConnection(v: VSensor, vSensor: VSensor[], fg: CheckerGrid[]) {
+  if (v.strength <= 0) return;
 
-  for (const c of src) {
-    if (c.path.length === 0) continue;
-    //최대 시간
-    const maxT = c.path.length * TIME;
-
-    //줄어들고 있는 때가 아니었고 connect의 t가 max + cooldown 지나면
-    if (!c.shrinking && c.t >= maxT + TIME * 5) c.shrinking = true;
-    c.t += c.shrinking ? -TIME : TIME;
-
-    //line setting
-    const d = Math.hypot(c.p2[0] - c.p1[0], c.p2[1] - c.p1[1]);
-    const maxWeight = 10;
-    p.strokeWeight(Math.max(1, maxWeight - Math.floor(d / 50)));
-
-    //프레임마다 time을 쁠마하고있으니까 t / time하면 몇번째인지 나옴
-    const drawCount = Math.floor(c.t / TIME);
-
-    //뒤에서부터 그림
-    if (c.shrinking) {
-      const currentIndex = Math.max(0, c.path.length - 1 - drawCount);
-      for (let i = currentIndex; i < c.path.length - 1; i++) {
-        const [x1, y1] = c.path[i];
-        const [x2, y2] = c.path[i + 1];
-        p.line(x1, y1, x2, y2);
-      }
-    } else {
-      // 앞에서부터 그림
-      const currentIndex = Math.min(drawCount, c.path.length - 1);
-      for (let i = 0; i < currentIndex; i++) {
-        const [x1, y1] = c.path[i];
-        const [x2, y2] = c.path[i + 1];
-        p.line(x1, y1, x2, y2);
-      }
-    }
-
-    const [sx, sy] = c.path[0];
-    const [ex, ey] = c.path[c.path.length - 1];
-    drawCircleCross(p, sx, sy, GRID / 2);
-    drawCircleCross(p, ex, ey, GRID / 2);
+  // 근처 vSensor 중 하나 찾아서 연결
+  const threshold = GRID * 30;
+  const candidates: VSensor[] = [];
+  for (const other of vSensor) {
+    if (other === v) continue;
+    if (other.strength < 10) continue;
+    const d = Math.hypot(v.checkerGrid.pos[0] - other.checkerGrid.pos[0], v.checkerGrid.pos[1] - other.checkerGrid.pos[1]);
+    if (d < threshold) candidates.push(other);
   }
+  if (candidates.length === 0) return;
+
+  const other = candidates[Math.floor(Math.random() * candidates.length)];
+  const from: [number, number] = [v.checkerGrid.pos[0], v.checkerGrid.pos[1]];
+  const to: [number, number] = [other.checkerGrid.pos[0], other.checkerGrid.pos[1]];
+  v.connect = { p1: from, p2: to, path: path2AndFilter(fg, from, to), t: 0, shrinking: false };
 }
 
-export function updateConnection(vSensor: VSensor[], fg?: CheckerGrid[]): [number[], [number, number], number] {
+export function updateCurrentTrail(vSensor: VSensor[]): [number[], number] {
   const segFlat: number[] = [];
-  let endPoint: [number, number] = [0, 0];
-
-  // 반경 내 fg 격자점 중 랜덤 선택 (target 없을 때 사용)
-  function findRandomFgPoint(me: VSensor): [number, number] | null {
-    if (!fg || fg.length === 0) return null;
-    const threshold = GRID * 8; // 8칸 이내
-    const candidates: [number, number][] = [];
-    for (const f of fg) {
-      const d = Math.hypot(me.checkerGrid.pos[0] - f.pos[0], me.checkerGrid.pos[1] - f.pos[1]);
-      if (d > GRID && d < threshold) candidates.push(f.pos);
-    }
-    if (candidates.length === 0) return null;
-    return candidates[Math.floor(Math.random() * candidates.length)];
-  }
+  let activeCount = 0;
 
   for (const v of vSensor) {
-    // strength가 있고 connect가 없으면 자동 생성
-    if (v.strength > 0 && v.connect.length === 0 && fg) {
-      const threshold = GRID * 30;
-      for (const other of vSensor) {
-        if (other === v) continue;
-        const d = Math.hypot(v.checkerGrid.pos[0] - other.checkerGrid.pos[0], v.checkerGrid.pos[1] - other.checkerGrid.pos[1]);
-        const prob = Math.max(0, 1 - d / threshold) ** 0.3;
-        if (Math.random() > prob) continue;
-        const from: [number, number] = [v.checkerGrid.pos[0], v.checkerGrid.pos[1]];
-        const to: [number, number] = [other.checkerGrid.pos[0], other.checkerGrid.pos[1]];
-        v.connect.push({ p1: from, p2: to, path: path2AndFilter(fg, from, to), t: 0, shrinking: false });
-      }
+    const path = v.connect.path;
+    if (path.length === 0) continue;
+
+    for (let i = 0; i < path.length - 1; i++) {
+      if (segFlat.length >= 400) break;
+      segFlat.push(path[i][0], path[i][1], path[i + 1][0], path[i + 1][1]);
     }
 
-    let vEnd: [number, number] | null = null;
-    for (const c of v.connect) {
-      if (c.path.length === 0) continue;
+    const maxT = path.length * TIME;
+    if (v.connect.t < maxT) v.connect.t += TIME * TRAIL_SPEED;
 
-      const maxT = c.path.length * TIME;
-      const waitForShrink = TIME * 5;
-      //쿨다운 + 최대 시간이 지나면 축소됨으로 변경
-      if (!c.shrinking && c.t >= maxT + waitForShrink) c.shrinking = true;
-      c.t += (c.shrinking ? -TIME : TIME) * SPEED;
-
-      const drawCount = Math.floor(c.t / TIME);
-
-      if (c.shrinking) {
-        // 현재 인덱스
-        const cur = Math.min(drawCount, c.path.length - 1);
-        for (let i = 0; i < cur; i++) {
-          if (segFlat.length >= 400) break;
-          segFlat.push(c.path[i][0], c.path[i][1], c.path[i + 1][0], c.path[i + 1][1]);
-        }
-        if (cur > 0) {
-          const ep: [number, number] = [c.path[cur][0], c.path[cur][1]];
-          vEnd = ep;
-          endPoint = ep;
-        }
-      } else {
-        const cur = Math.max(0, c.path.length - 1 - drawCount);
-        for (let i = cur; i < c.path.length - 1; i++) {
-          if (segFlat.length >= 400) break;
-          segFlat.push(c.path[i][0], c.path[i][1], c.path[i + 1][0], c.path[i + 1][1]);
-        }
-        if (cur < c.path.length) {
-          const ep: [number, number] = [c.path[cur][0], c.path[cur][1]];
-          vEnd = ep;
-          endPoint = ep;
-        }
-      }
-    }
-
-    // 이 vSensor의 tentacle들에 target 세팅
-    // vEnd 없으면 각 tentacle마다 다른 fg 격자점 선택
-    for (const t of v.tentacles) {
-      if (vEnd) {
-        t.target = [vEnd[0], vEnd[1]];
-      } else {
-        // target이 이미 있으면 유지, 없거나 가끔 새로 선택
-        const needNewTarget = !t.target || Math.random() < 0.005; // 0.5% 확률로 변경
-        if (needNewTarget) {
-          const fgPoint = findRandomFgPoint(v);
-          t.target = fgPoint ? [fgPoint[0], fgPoint[1]] : null;
-        }
-      }
-    }
+    // count는 진행도만큼만 — 셰이더는 이만큼 그림
+    const drawCount = Math.floor(v.connect.t / TIME);
+    const cur = Math.max(0, Math.min(drawCount, path.length - 1));
+    activeCount += cur;
   }
-  const realSegCount = Math.floor(segFlat.length / 4);
-  while (segFlat.length < 400) segFlat.push(0);
 
-  return [segFlat, endPoint, realSegCount];
+  while (segFlat.length < 400) segFlat.push(0);
+  return [segFlat, activeCount];
+}
+
+export function vSensorAlert(x: number, y: number, vSensor: VSensor[], fg: CheckerGrid[]) {
+  const v = vSensor.find((a) => a.checkerGrid.pos[0] === x && a.checkerGrid.pos[1] == y);
+  if (v) updateConnection(v, vSensor, fg);
 }

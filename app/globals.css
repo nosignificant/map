@@ -5,3 +5,9 @@
   --foreground: #171717;
 }
 
+.borderWhite {
+  position: "relative";
+  width: 1200;
+  height: 1200;
+  border: "2px solid white";
+}

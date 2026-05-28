@@ -1,34 +1,40 @@
 import p5 from "p5";
-import { SSensor } from "../Util/types";
+import { Ssensor, SsensorImagePos } from "../Util/types";
+import { GRID } from "../Util/constant";
 
 export const ANGLE_STEP = 3;
-const CELL_CM = 100; // 1 grid cell = 1m
-export const MAX_CM = 600;
-export const PX_PER_CELL = 150; // 1 cell의 픽셀 반경
-const MAX_CELLS = MAX_CM / CELL_CM; // = 6
-const DOT_SIZE = PX_PER_CELL * 0.3;
+const CMtoPX = 100; // 1 cell = 1m
+export const MAX_CM = 500; // 측정 최대 거리 (5m)
+export const PX_PER_CELL = GRID * 3; // 한칸당 크기
+const MAX_CELLS = MAX_CM / CMtoPX; // 칸 개수(5칸)
 
-export const SONAR_R = MAX_CELLS * PX_PER_CELL;
+export const SONAR_R = MAX_CELLS * PX_PER_CELL; // 지름 1200px 반지름 600px
 
 function pad2(n: number): string {
   return n.toString().padStart(2, "0");
 }
 
-export type SonarItem = { pos: [number, number]; image: p5.Image };
-
-export function updateSSensorImage(data: SSensor[], dir: -1 | 1, sUnits: Map<string, p5.Image>, scale: number): SonarItem[] {
-  const items: SonarItem[] = [];
-  for (const s of data) {
-    if (s.angle < 0 || s.angle > 180) continue;
-    if (s.distance < 15 || s.distance > MAX_CM) continue;
-    const snapAngle = Math.round(s.angle / ANGLE_STEP) * ANGLE_STEP;
-    const img = getSSensorImage(snapAngle, s.distance, sUnits);
-    if (!img) continue;
-    const rad = (s.angle * Math.PI) / 180;
-    const radius = (s.distance / CELL_CM) * PX_PER_CELL * scale;
-    items.push({ pos: [-Math.cos(rad) * radius, dir * Math.sin(rad) * radius], image: img });
+export function updateSSensorImage(sIMG: SsensorImagePos[], TIME: number) {
+  for (let i = sIMG.length - 1; i >= 0; i--) {
+    sIMG[i].t -= TIME;
+    if (sIMG[i].t <= 0) sIMG.splice(i, 1);
   }
-  return items;
+}
+
+export function initSsensorIMGpos(angle: number, distance: number, time: number, dir: -1 | 1, sUnits: Map<string, p5.Image>): SsensorImagePos | null {
+  if (angle < 0 || angle > 180) return null;
+  if (distance < 15 || distance > MAX_CM) return null;
+
+  const snapAngle = Math.round(angle / ANGLE_STEP) * ANGLE_STEP;
+  const img = getSSensorImage(snapAngle, distance, sUnits);
+  if (!img) return null;
+
+  const rad = (angle * Math.PI) / 180;
+  const radius = (distance / CMtoPX) * PX_PER_CELL;
+  const x = -Math.cos(rad) * radius;
+  const y = dir * Math.sin(rad) * radius;
+
+  return { pos: [x, y], image: img, t: time };
 }
 
 function randomUnit(sUnits: Map<string, p5.Image>, folder: string, prefix: string, count: number): p5.Image | null {
