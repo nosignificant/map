@@ -123,7 +123,7 @@ export function drawFABRIK(p: p5, t: Tentacle) {
   const newParts = FABRIK(p, t);
   if (newParts.length > 0) t.parts = newParts;
 
-  const lineColor = [0, 0, 0, 0];
+  const lineColor = [0, 0, 0];
   const lineWeight = 15;
   const pointSize = 5;
 

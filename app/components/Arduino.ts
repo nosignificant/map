@@ -25,10 +25,10 @@ while (sensorPos.length < 50) sensorPos.push(0);
 // ===== fg 점마다 4 모서리 색상 보간 (모듈 로드 시 1번만 계산) =====
 
 // 4 모서리 색상 (RGB) — 화려한 보색
-const CORNER_TL: [number, number, number] = [255, 80, 80];   // 빨강 (좌상단)
-const CORNER_TR: [number, number, number] = [80, 255, 80];   // 초록 (우상단)
-const CORNER_BL: [number, number, number] = [80, 80, 255];   // 파랑 (좌하단)
-const CORNER_BR: [number, number, number] = [255, 255, 80];  // 노랑 (우하단)
+const CORNER_TL: [number, number, number] = [255, 80, 80]; // 빨강 (좌상단)
+const CORNER_TR: [number, number, number] = [80, 255, 80]; // 초록 (우상단)
+const CORNER_BL: [number, number, number] = [80, 80, 255]; // 파랑 (좌하단)
+const CORNER_BR: [number, number, number] = [255, 255, 80]; // 노랑 (우하단)
 
 function bilinearColor(x: number, y: number): [number, number, number] {
   const u = x / CANVAS;
@@ -75,9 +75,6 @@ export function initArduino() {
     saveTimer = setInterval(saveAccumulateToDisk, SAVE_INTERVAL_MS);
     // 페이지 닫힐 때 한 번 더 저장
     window.addEventListener("beforeunload", () => saveAccumulateToDisk());
-    // 콘솔에서 수동 호출 가능
-    // @ts-expect-error dev convenience
-    window.saveAccumulateToDisk = saveAccumulateToDisk;
   }
 
   const socket = new WebSocket("ws://localhost:8080");

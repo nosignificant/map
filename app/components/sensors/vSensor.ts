@@ -180,18 +180,21 @@ export function drawConnection(p: p5, vSensor: VSensor[]) {
 
 export function drawUpAndDown(p: p5, hx: number, hy: number, currentPathOcc: [number, number][], alt: boolean) {
   const half = CANVAS / 2;
-  p.strokeWeight(GRID - 5);
+  p.strokeWeight(GRID - 2);
 
   const horizColor: [number, number, number] = alt ? [0, 0, 255] : [255, 0, 0];
   const vertColor: [number, number, number] = alt ? [255, 0, 0] : [0, 0, 255];
 
   for (const pos of currentPathOcc) {
+    //const color = colorAt(pos[0], pos[1]);
+
     const [rawX, rawY] = pos;
     if (rawX === hx && rawY === hy) continue;
 
     const [px, py] = computePos4Shader([rawX, rawY]);
 
     p.stroke(...horizColor);
+    //p.stroke(color[0], color[1], color[2]);
     if (px < 0) {
       p.rect(-half, py - GRID / 2, px + half, GRID);
     } else {

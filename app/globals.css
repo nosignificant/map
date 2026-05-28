@@ -6,8 +6,6 @@
 }
 
 .borderWhite {
-  position: "relative";
-  width: 1200;
-  height: 1200;
-  border: "2px solid white";
+  outline: 2px solid white;
+  outline-offset: -2px; /* 박스 안으로 들어오게 */
 }
