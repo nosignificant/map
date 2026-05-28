@@ -11,7 +11,7 @@ export type VSensor = {
   checkerGrid: CheckerGrid;
   near: VsensorImagePos[];
   clickCount: number;
-  connect: Connect;
+  connect: Connect[];
   tentacles: Tentacle[];
   strength: number;
   currentStage: number;
@@ -37,11 +37,9 @@ export type VsensorImagePos = {
   stage: number;
 };
 export type Connect = {
-  p1: [number, number];
-  p2: [number, number];
   path: [number, number][];
   t: number;
-  shrinking: boolean;
+  alt: boolean;
 };
 
 export type Tentacle = {

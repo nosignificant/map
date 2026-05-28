@@ -1,9 +1,11 @@
 import type p5 from "p5";
 import { CheckerGrid, VSensor, VsensorImagePos, Connect } from "../Util/types";
-import { GRID, TIME, TRAIL_SPEED, STEP_OFFSETS } from "../Util/constant";
+import { GRID, TIME, TRAIL_SPEED, STEP_OFFSETS, CANVAS } from "../Util/constant";
 import { findPath } from "../Util/BFS";
 import { vSensorUnits } from "../Util/imageStore";
 import { updateHistoryArr } from "../SketchHistory";
+import { computePos4Shader } from "../Util/shaderUtil";
+import { colorAt } from "../Arduino";
 
 export function initVSensor(checker: CheckerGrid[]): VSensor[] {
   const result: VSensor[] = [];
@@ -23,7 +25,7 @@ export function initVSensor(checker: CheckerGrid[]): VSensor[] {
         checkerGrid: { grid: { ri: row.ri, ci: col.ci }, pos: [col.x, row.y] },
         near: [],
         clickCount: 0,
-        connect: { p1: [0, 0], p2: [0, 0], path: [], t: 0, shrinking: false },
+        connect: [],
         tentacles: [],
         strength: 0,
         currentStage: 0,
@@ -56,7 +58,7 @@ export function snapToSensor(p: p5, src: VSensor[]): VSensor {
     checkerGrid: { grid: { ri: 0, ci: 0 }, pos: [0, 0] },
     near: [],
     clickCount: 0,
-    connect: { p1: [0, 0], p2: [0, 0], path: [], t: 0, shrinking: false },
+    connect: [],
     tentacles: [],
     strength: 0,
     currentStage: 0,
@@ -109,9 +111,7 @@ export function path2AndFilter(checker: CheckerGrid[], from: [number, number], t
 
   let filt: CheckerGrid[] = checker.filter(
     (check) =>
-      //path1의 xy랑 checker의 위치가 다르면 포함
       !path.some(([x, y]) => check.pos[0] === x && check.pos[1] === y) ||
-      //시작점과 끝점이면 포함
       (check.pos[0] === from[0] && check.pos[1] === from[1]) ||
       (check.pos[0] === to[0] && check.pos[1] === to[1])
   );
@@ -120,11 +120,12 @@ export function path2AndFilter(checker: CheckerGrid[], from: [number, number], t
   return findPath(filt, from, to);
 }
 
+let altToggle = false;
+
 export function updateConnection(v: VSensor, vSensor: VSensor[], fg: CheckerGrid[]) {
   if (v.strength <= 0) return;
 
-  // 근처 vSensor 중 하나 찾아서 연결
-  const threshold = GRID * 30;
+  const threshold = GRID * 15;
   const candidates: VSensor[] = [];
   for (const other of vSensor) {
     if (other === v) continue;
@@ -137,33 +138,73 @@ export function updateConnection(v: VSensor, vSensor: VSensor[], fg: CheckerGrid
   const other = candidates[Math.floor(Math.random() * candidates.length)];
   const from: [number, number] = [v.checkerGrid.pos[0], v.checkerGrid.pos[1]];
   const to: [number, number] = [other.checkerGrid.pos[0], other.checkerGrid.pos[1]];
-  v.connect = { p1: from, p2: to, path: path2AndFilter(fg, from, to), t: 0, shrinking: false };
+  v.connect.push({ path: path2AndFilter(fg, from, to), t: 0, alt: altToggle });
+  altToggle = !altToggle;
 }
 
-export function updateCurrentTrail(vSensor: VSensor[]): [number[], number] {
-  const segFlat: number[] = [];
-  let activeCount = 0;
-
+export function drawConnection(p: p5, vSensor: VSensor[]) {
   for (const v of vSensor) {
-    const path = v.connect.path;
-    if (path.length === 0) continue;
+    for (let i = v.connect.length - 1; i >= 0; i--) {
+      const c = v.connect[i];
+      if (c.path.length === 0) {
+        v.connect.splice(i, 1);
+        continue;
+      }
 
-    for (let i = 0; i < path.length - 1; i++) {
-      if (segFlat.length >= 400) break;
-      segFlat.push(path[i][0], path[i][1], path[i + 1][0], path[i + 1][1]);
+      c.t += TIME * TRAIL_SPEED;
+      const maxT = c.path.length * TIME;
+
+      if (c.t >= maxT + TIME * 500) {
+        v.connect.splice(i, 1);
+        continue;
+      }
+
+      const drawCount = Math.floor(c.t / TIME);
+      const cur = Math.max(0, Math.min(drawCount, c.path.length - 1));
+      p.strokeCap(p.SQUARE);
+
+      const currentPathOcc = c.path.slice(0, cur + 1);
+      const [hx, hy] = c.path[cur];
+      drawUpAndDown(p, hx, hy, currentPathOcc, c.alt);
+
+      p.stroke(0);
+      p.strokeWeight(GRID);
+      for (let j = 0; j < cur; j++) {
+        const [x1, y1] = computePos4Shader(c.path[j]);
+        const [x2, y2] = computePos4Shader(c.path[j + 1]);
+        p.line(x1, y1, x2, y2);
+      }
+    }
+  }
+}
+
+export function drawUpAndDown(p: p5, hx: number, hy: number, currentPathOcc: [number, number][], alt: boolean) {
+  const half = CANVAS / 2;
+  p.strokeWeight(GRID - 5);
+
+  const horizColor: [number, number, number] = alt ? [0, 0, 255] : [255, 0, 0];
+  const vertColor: [number, number, number] = alt ? [255, 0, 0] : [0, 0, 255];
+
+  for (const pos of currentPathOcc) {
+    const [rawX, rawY] = pos;
+    if (rawX === hx && rawY === hy) continue;
+
+    const [px, py] = computePos4Shader([rawX, rawY]);
+
+    p.stroke(...horizColor);
+    if (px < 0) {
+      p.rect(-half, py - GRID / 2, px + half, GRID);
+    } else {
+      p.rect(px, py - GRID / 2, half - px, GRID);
     }
 
-    const maxT = path.length * TIME;
-    if (v.connect.t < maxT) v.connect.t += TIME * TRAIL_SPEED;
-
-    // count는 진행도만큼만 — 셰이더는 이만큼 그림
-    const drawCount = Math.floor(v.connect.t / TIME);
-    const cur = Math.max(0, Math.min(drawCount, path.length - 1));
-    activeCount += cur;
+    p.stroke(...vertColor);
+    if (py < 0) {
+      p.rect(px - GRID / 2, -half, GRID, py + half);
+    } else {
+      p.rect(px - GRID / 2, py, GRID, half - py);
+    }
   }
-
-  while (segFlat.length < 400) segFlat.push(0);
-  return [segFlat, activeCount];
 }
 
 export function vSensorAlert(x: number, y: number, vSensor: VSensor[], fg: CheckerGrid[]) {

@@ -1,8 +1,8 @@
 import p5 from "p5";
 import { Tentacle, VSensor, CheckerGrid, Accumulate } from "../Util/types";
-import { computePos4Shader } from "../Util/shaderUtil";
 import { snapToCheck } from "./checkerboard";
 import { STEP_OFFSETS, GRID, TIME } from "../Util/constant";
+import { computePos4Shader } from "../Util/shaderUtil";
 
 export function initTentacle(vSensor: VSensor, count: number, length: number, partCount: number): Tentacle[] {
   const tens: Tentacle[] = [];
@@ -123,7 +123,7 @@ export function drawFABRIK(p: p5, t: Tentacle) {
   const newParts = FABRIK(p, t);
   if (newParts.length > 0) t.parts = newParts;
 
-  const lineColor = [0, 0, 0];
+  const lineColor = [0, 0, 0, 0];
   const lineWeight = 15;
   const pointSize = 5;
 

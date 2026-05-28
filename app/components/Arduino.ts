@@ -1,8 +1,8 @@
 import { VSensor, Ssensor, Accumulate, SsensorImagePos } from "./Util/types";
-import { initVSensor, updateConnection, updateCurrentTrail, vSensorAlert } from "./sensors/vSensor";
+import { initVSensor, vSensorAlert } from "./sensors/vSensor";
 import { fullGrid } from "./drawings/checkerboard";
 import { sSensorUnits } from "./Util/imageStore";
-import { INITtime, TIME } from "./Util/constant";
+import { INITtime, TIME, CANVAS } from "./Util/constant";
 import { initSsensorIMGpos, updateSSensorImage } from "./sensors/sSensor";
 import { initTentacle, tenOccupied, updateTentacle } from "./drawings/tentacles";
 
@@ -14,8 +14,6 @@ for (const v of vSensor) {
 }
 // 매 tick에서 갱신되는 씬 데이터 (Sketch에서 import해서 그대로 사용)
 export const tOccupied: [number, number][] = [];
-export const segFlat: number[] = [];
-export const conn = { realSegCount: 0 };
 
 // 셰이더용 센서 위치 배열 (50개로 패딩)
 export const sensorPos: number[] = [];
@@ -23,6 +21,31 @@ for (const v of vSensor) {
   sensorPos.push(v.checkerGrid.pos[0], v.checkerGrid.pos[1]);
 }
 while (sensorPos.length < 50) sensorPos.push(0);
+
+// ===== fg 점마다 4 모서리 색상 보간 (모듈 로드 시 1번만 계산) =====
+
+// 4 모서리 색상 (RGB) — 화려한 보색
+const CORNER_TL: [number, number, number] = [255, 80, 80];   // 빨강 (좌상단)
+const CORNER_TR: [number, number, number] = [80, 255, 80];   // 초록 (우상단)
+const CORNER_BL: [number, number, number] = [80, 80, 255];   // 파랑 (좌하단)
+const CORNER_BR: [number, number, number] = [255, 255, 80];  // 노랑 (우하단)
+
+function bilinearColor(x: number, y: number): [number, number, number] {
+  const u = x / CANVAS;
+  const v = y / CANVAS;
+  const r = CORNER_TL[0] * (1 - u) * (1 - v) + CORNER_TR[0] * u * (1 - v) + CORNER_BL[0] * (1 - u) * v + CORNER_BR[0] * u * v;
+  const g = CORNER_TL[1] * (1 - u) * (1 - v) + CORNER_TR[1] * u * (1 - v) + CORNER_BL[1] * (1 - u) * v + CORNER_BR[1] * u * v;
+  const b = CORNER_TL[2] * (1 - u) * (1 - v) + CORNER_TR[2] * u * (1 - v) + CORNER_BL[2] * (1 - u) * v + CORNER_BR[2] * u * v;
+  return [r, g, b];
+}
+
+// fg와 같은 순서로 색상 캐시
+export const fgColors: [number, number, number][] = fg.map((f) => bilinearColor(f.pos[0], f.pos[1]));
+
+// 임의 위치 색상 조회 (fg에 없는 좌표도 가능)
+export function colorAt(x: number, y: number): [number, number, number] {
+  return bilinearColor(x, y);
+}
 
 // sSensor 위쪽 반원
 export const sSensor1: Ssensor = { id: 1, angle: 0, distance: 0, dir: -1 };
@@ -183,12 +206,6 @@ function startSensorTick() {
     const newOcc = tenOccupied(fg, vSensor);
     tOccupied.length = 0;
     tOccupied.push(...newOcc);
-
-    // trail 진행도 갱신
-    const [newSeg, newCount] = updateCurrentTrail(vSensor);
-    segFlat.length = 0;
-    segFlat.push(...newSeg);
-    conn.realSegCount = newCount;
 
     //t 확인하고 0 되면 제거
     updateSSensorImage(currentSsensor1IMG, TIME);
