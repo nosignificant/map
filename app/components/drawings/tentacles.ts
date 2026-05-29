@@ -1,5 +1,5 @@
 import p5 from "p5";
-import { Tentacle, VSensor, CheckerGrid, Accumulate } from "../Util/types";
+import { Tentacle, VSensor, CheckerGrid, Vaccumulate } from "../Util/types";
 import { snapToCheck } from "./checkerboard";
 import { STEP_OFFSETS, GRID, TIME } from "../Util/constant";
 import { computePos4Shader } from "../Util/shaderUtil";
@@ -84,7 +84,7 @@ export function FABRIK(p: p5, t: Tentacle): [number, number][] {
   return newParts;
 }
 
-export function updateTentacle(vSensorAccumulate: Accumulate[], vSensor: VSensor) {
+export function updateTentacle(vSensorAccumulate: Vaccumulate[], vSensor: VSensor) {
   for (const t of vSensor.tentacles) {
     for (const a of vSensorAccumulate) {
       const dx = a.pos[0] - vSensor.checkerGrid.pos[0];

@@ -1,7 +1,7 @@
 import p5 from "p5";
 import { CANVAS, GRID } from "./Util/constant";
 import { checkerboard } from "./drawings/checkerboard";
-import { vSensor, randomizeSSensor, initArduino, vSensorAccumulate, updateAccumulate, fg, tOccupied } from "./Arduino";
+import { vSensor, randomizeSSensor, initArduino, vSensorAccumulate, updateVsensorAccumulate, fg, tOccupied } from "./Arduino";
 import { shaderCobine } from "./Util/shaderUtil";
 import { initImages } from "./Util/imageStore";
 import { drawFABRIK } from "./drawings/tentacles";
@@ -81,8 +81,8 @@ export function Sketch(container: HTMLElement) {
       closest.strength += 100;
 
       const [cx, cy] = closest.checkerGrid.pos;
-      updateAccumulate(vSensorAccumulate, cx, cy);
-      vSensorAlert(cx, cy, vSensor, fg); // ← 연결 생성 트리거
+      updateVsensorAccumulate(vSensorAccumulate, cx, cy);
+      vSensorAlert(cx, cy, vSensor, fg);
     };
   }, container);
 

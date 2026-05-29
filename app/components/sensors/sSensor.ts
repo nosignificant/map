@@ -3,7 +3,7 @@ import { Ssensor, SsensorImagePos } from "../Util/types";
 import { GRID } from "../Util/constant";
 
 export const ANGLE_STEP = 3;
-const CMtoPX = 100; // 1 cell = 1m
+export const CMtoPX = 100; // 1 cell = 1m
 export const MAX_CM = 500; // 측정 최대 거리 (5m)
 export const PX_PER_CELL = GRID * 3; // 한칸당 크기
 const MAX_CELLS = MAX_CM / CMtoPX; // 칸 개수(5칸)
@@ -31,8 +31,8 @@ export function initSsensorIMGpos(angle: number, distance: number, time: number,
 
   const rad = (angle * Math.PI) / 180;
   const radius = (distance / CMtoPX) * PX_PER_CELL;
-  const x = -Math.cos(rad) * radius;
-  const y = dir * Math.sin(rad) * radius;
+  const x = Math.floor(-Math.cos(rad) * radius);
+  const y = Math.floor(dir * Math.sin(rad) * radius);
 
   return { pos: [x, y], image: img, t: time };
 }

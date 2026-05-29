@@ -1,9 +1,9 @@
-import { VSensor, Ssensor, Accumulate, SsensorImagePos } from "./Util/types";
+import { VSensor, Ssensor, Vaccumulate, Saccumulate, SsensorImagePos } from "./Util/types";
 import { initVSensor, vSensorAlert } from "./sensors/vSensor";
 import { fullGrid } from "./drawings/checkerboard";
 import { sSensorUnits } from "./Util/imageStore";
 import { INITtime, TIME, CANVAS } from "./Util/constant";
-import { initSsensorIMGpos, updateSSensorImage } from "./sensors/sSensor";
+import { initSsensorIMGpos, updateSSensorImage, CMtoPX, ANGLE_STEP } from "./sensors/sSensor";
 import { initTentacle, tenOccupied, updateTentacle } from "./drawings/tentacles";
 
 export const fg = fullGrid();
@@ -56,9 +56,9 @@ export const sSensor2: Ssensor = { id: 2, angle: 0, distance: 0, dir: 1 };
 export const currentSsensor2IMG: SsensorImagePos[] = [];
 
 //accumulate
-export const vSensorAccumulate: Accumulate[] = [];
-export const sSensor1Accumulate: Accumulate[] = [];
-export const sSensor2Accumulate: Accumulate[] = [];
+export const vSensorAccumulate: Vaccumulate[] = [];
+export const sSensor1Accumulate: Saccumulate[] = [];
+export const sSensor2Accumulate: Saccumulate[] = [];
 
 // WebSocket
 let connected = false;
@@ -97,7 +97,7 @@ export function initArduino() {
         vSensor[sensorId].strength = val;
 
         //개수 증가
-        updateAccumulate(vSensorAccumulate, x, y);
+        updateVsensorAccumulate(vSensorAccumulate, x, y);
       }
       return;
     }
@@ -112,8 +112,8 @@ export function initArduino() {
       if (id == 1) currentSsensor1IMG.push(newSSimg);
       else if (id == 2) currentSsensor2IMG.push(newSSimg);
 
-      //개수 증가
-      updateAccumulate(id == 1 ? sSensor1Accumulate : sSensor2Accumulate, newSSimg.pos[0], newSSimg.pos[1]);
+      //개수 증가 — angle, distance 원본값 전달
+      updateSsensorAccumulate(id == 1 ? sSensor1Accumulate : sSensor2Accumulate, newSSimg.pos[0], newSSimg.pos[1], angle, distance);
     }
   };
 
@@ -127,16 +127,18 @@ let testStageIdx = 0;
 export function randomizeSSensor() {
   const distance = TEST_STAGES[testStageIdx++ % TEST_STAGES.length];
 
-  const img1 = initSsensorIMGpos(Math.floor(Math.random() * 181), distance, INITtime, -1, sSensorUnits);
+  const angle1 = Math.floor(Math.random() * 181);
+  const img1 = initSsensorIMGpos(angle1, distance, INITtime, -1, sSensorUnits);
   if (img1) {
     currentSsensor1IMG.push(img1);
-    updateAccumulate(sSensor1Accumulate, img1.pos[0], img1.pos[1]);
+    updateSsensorAccumulate(sSensor1Accumulate, img1.pos[0], img1.pos[1], angle1, distance);
   }
 
-  const img2 = initSsensorIMGpos(Math.floor(Math.random() * 181), distance, INITtime, 1, sSensorUnits);
+  const angle2 = Math.floor(Math.random() * 181);
+  const img2 = initSsensorIMGpos(angle2, distance, INITtime, 1, sSensorUnits);
   if (img2) {
     currentSsensor2IMG.push(img2);
-    updateAccumulate(sSensor2Accumulate, img2.pos[0], img2.pos[1]);
+    updateSsensorAccumulate(sSensor2Accumulate, img2.pos[0], img2.pos[1], angle2, distance);
   }
 }
 
@@ -149,9 +151,9 @@ async function loadAccumulateFromDisk() {
   try {
     const res = await fetch("/api/accumulate");
     const data = await res.json();
-    (data.vSensorAccumulate ?? []).forEach((a: Accumulate) => vSensorAccumulate.push(a));
-    (data.sSensor1Accumulate ?? []).forEach((a: Accumulate) => sSensor1Accumulate.push(a));
-    (data.sSensor2Accumulate ?? []).forEach((a: Accumulate) => sSensor2Accumulate.push(a));
+    (data.vSensorAccumulate ?? []).forEach((a: Vaccumulate) => vSensorAccumulate.push(a));
+    (data.sSensor1Accumulate ?? []).forEach((a: Saccumulate) => sSensor1Accumulate.push(a));
+    (data.sSensor2Accumulate ?? []).forEach((a: Saccumulate) => sSensor2Accumulate.push(a));
     console.log(`[누적 복구] v:${vSensorAccumulate.length}, s1:${sSensor1Accumulate.length}, s2:${sSensor2Accumulate.length}`);
   } catch (e) {
     console.warn("[누적 로드 실패]", e);
@@ -175,23 +177,30 @@ export async function saveAccumulateToDisk() {
   }
 }
 
-//이미지 누적 관리
-const MAX_ACCUM = 200; // 배열 최대 크기 (메모리 보호)
+const MAX_ACCUM = 200;
 
-export function updateAccumulate(acc: Accumulate[], x: number, y: number) {
-  const ix = Math.floor(x);
-  const iy = Math.floor(y);
-
-  const found = acc.find((a) => a.pos[0] === ix && a.pos[1] === iy);
+export function updateVsensorAccumulate(acc: Vaccumulate[], x: number, y: number) {
+  const found = acc.find((a) => a.pos[0] === x && a.pos[1] === y);
   if (found) {
     found.freq++;
     vSensorAlert(found.pos[0], found.pos[1], vSensor, fg);
   } else {
     if (acc.length >= MAX_ACCUM) acc.shift();
-    acc.push({ pos: [ix, iy], freq: 1 });
+    acc.push({ pos: [x, y], freq: 1 });
   }
 }
 
+export function updateSsensorAccumulate(acc: Saccumulate[], x: number, y: number, angle: number, dist: number) {
+  const an = Math.round(angle / ANGLE_STEP) * ANGLE_STEP;  // 0, 3, 6, ..., 180
+  const d = Math.floor(dist / CMtoPX);                     // 0, 1, 2, ... cell 인덱스
+  const found = acc.find((a) => a.angle === an && a.dist === d);
+  if (found) {
+    found.freq++;
+  } else {
+    if (acc.length >= MAX_ACCUM) acc.shift();
+    acc.push({ pos: [x, y], angle: an, dist: d, freq: 1 });
+  }
+}
 //이미지,tentacle 수명 업데이트(모든업데이트 여기서 함)
 let tickStarted = false;
 function startSensorTick() {
