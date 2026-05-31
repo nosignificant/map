@@ -1,11 +1,12 @@
 import P5SketchLoader from "./components/P5SketchLoader";
+import PrintDownloader from "./components/PrintDownloader";
 import "./globals.css";
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center font-sans py-16 gap-8">
-      {/* 메인 무대 — 1200×1200에 모든 레이어 겹침 */}
-      <div className="border " style={mainStageStyle(1200)}>
+    <div className="flex flex-row flex-1 items-center justify-center font-sans py-16 gap-8">
+      {/* 메인 무대 — 1200×1200에 모든 레이어 겹침 (조작용) */}
+      <div className="borderWhite" style={mainStageStyle(1200)}>
         <div style={overlayLayerStyle(1, 1200, true)}>
           <P5SketchLoader sketchName="main" />
         </div>
@@ -20,16 +21,43 @@ export default function Home() {
         </div>
       </div>
 
-      {/* 보조 — unit, sonar 위아래 따로 (각 400) */}
-      <div className="flex flex-col gap-2">
-        <div className="borderWhite" style={miniStyle(400)}>
-          <div style={miniScale(0.333)}>
+      {/* 출력용 무대 — 색반전, Enter 누르면 이거 다운로드 */}
+      <PrintDownloader targetSelector=".print-source" />
+      <div
+        className="borderWhite print-source"
+        style={{
+          ...mainStageStyle(400),
+          background: "white",
+          filter: "invert(1)",
+          overflow: "hidden",
+        }}
+      >
+        <div style={{ ...miniScale(0.333), position: "absolute", top: 0, left: 0 }}>
+          <div style={{ ...overlayLayerStyle(1, 1200), pointerEvents: "none" }}>
+            <P5SketchLoader sketchName="main" />
+          </div>
+          <div style={overlayLayerStyle(2, 1200)}>
             <P5SketchLoader sketchName="unit" />
           </div>
-        </div>
-        <div className="borderWhite" style={miniStyle(400)}>
-          <div style={miniScale(0.333)}>
+          <div style={overlayLayerStyle(3, 1200)}>
             <P5SketchLoader sketchName="sonar" />
+          </div>
+        </div>
+      </div>
+      <div className="flex flex-row gap-2">
+        <div style={overlayLayerStyle(4, 1200)}>
+          <P5SketchLoader sketchName="history" />
+        </div>
+        <div className="flex flex-col gap-2">
+          <div className="borderWhite" style={miniStyle(600)}>
+            <div style={miniScale(0.333)}>
+              <P5SketchLoader sketchName="unit" />
+            </div>
+          </div>
+          <div className="borderWhite" style={miniStyle(600)}>
+            <div style={miniScale(0.333)}>
+              <P5SketchLoader sketchName="sonar" />
+            </div>
           </div>
         </div>
       </div>

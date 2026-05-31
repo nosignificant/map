@@ -23,7 +23,7 @@ vec3 drawTapestry(vec2 p, vec3 col) {
   }
 
   // metaball 내부 채우기: threshold 1.0 이상이면 색칠
-  float metaFill = smoothstep(0.9, 1.0, metaField);
+  float metaFill = smoothstep(1.0, 1.0, metaField);
 
   // occupied 영역
   if (occupied) {
@@ -32,14 +32,14 @@ vec3 drawTapestry(vec2 p, vec3 col) {
       float n = texture2D(uNoise, noiseUV).r;
       float prob = 0.5 * (1.0 - (-minBoxSDF) / uGrid);
       if (n < prob) {
-        col = mix(col, vec3(0, 0, 255), 1.0);
+        col = mix(col, vec3(0,0,255), 1.0);
       }
     }
-    col = mix(col, vec3(0, 0, 255), metaFill);
+    col = mix(col, vec3(0,0,255), metaFill);
     return col;
   }
 
-  col = mix(col, vec3(0, 0, 255), metaFill);
+  col = mix(col, vec3(0,0,255), metaFill);
 
   return col;
 }

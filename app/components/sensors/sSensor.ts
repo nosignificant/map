@@ -1,6 +1,7 @@
 import p5 from "p5";
 import { Ssensor, SsensorImagePos } from "../Util/types";
 import { GRID } from "../Util/constant";
+import { MakeImgSet } from "../Util/edgeAndCorner";
 
 export const ANGLE_STEP = 3;
 export const CMtoPX = 100; // 1 cell = 1m

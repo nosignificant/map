@@ -1,40 +1,58 @@
 import p5 from "p5";
-import { Tentacle, VSensor, CheckerGrid, Vaccumulate } from "../Util/types";
+import { Tentacle, VSensor, CheckerGrid, Vaccumulate, SsensorImagePos } from "../Util/types";
 import { snapToCheck } from "./checkerboard";
 import { STEP_OFFSETS, GRID, TIME } from "../Util/constant";
 import { computePos4Shader } from "../Util/shaderUtil";
+import { drawCross } from "./draw";
 
-export function initTentacle(vSensor: VSensor, count: number, length: number, partCount: number): Tentacle[] {
-  const tens: Tentacle[] = [];
-  const rotAngle = 360 / count;
+export function initTentacle(vSensor: VSensor, length: number, partCount: number): Tentacle {
+  const angle = 0;
+  const startPos = vSensor.checkerGrid.pos;
+  const defaultPos: [number, number] = [startPos[0] + Math.cos(angle) * length, startPos[1] + Math.sin(angle) * length];
 
-  for (let i = 0; i < count; i++) {
-    // 기본 각도
-    const angle = (rotAngle * i * Math.PI) / 180;
-    const startPos = vSensor.checkerGrid.pos;
-    const defaultPos: [number, number] = [startPos[0] + Math.cos(angle) * length, startPos[1] + Math.sin(angle) * length];
-
-    const parts: [number, number][] = [];
-    for (let j = 0; j < partCount; j++) {
-      const t = j / (partCount - 1);
-      parts.push([startPos[0] + (defaultPos[0] - startPos[0]) * t, startPos[1] + (defaultPos[1] - startPos[1]) * t]);
-    }
-
-    const ten: Tentacle = {
-      startPos,
-      defaultLength: length,
-      defaultPos,
-      parts,
-      target: null,
-      t: 0,
-      speed: Math.random() * 0.04 + 0.02,
-      phase: Math.random() * Math.PI * 2,
-      // -30 ~ 30 정도, 음수/양수면 휘는 방향 다름
-      curveBias: (Math.random() - 0.5) * 60,
-    };
-    tens.push(ten);
+  const parts: [number, number][] = [];
+  for (let j = 0; j < partCount; j++) {
+    const t = j / (partCount - 1);
+    parts.push([startPos[0] + (defaultPos[0] - startPos[0]) * t, startPos[1] + (defaultPos[1] - startPos[1]) * t]);
   }
-  return tens;
+
+  return {
+    startPos,
+    defaultLength: length,
+    defaultPos,
+    parts,
+    target: null,
+    t: 0,
+    switchT: 0,
+    speed: Math.random() * 0.04 + 0.02,
+    phase: Math.random() * Math.PI * 2,
+    curveBias: (Math.random() - 0.5) * 60,
+  };
+}
+
+export function initStentacle(sIMGpos: SsensorImagePos, length: number, partCount: number): Tentacle {
+  const angle = 0;
+  const startPos = sIMGpos.pos;
+  const defaultPos: [number, number] = [startPos[0] + Math.cos(angle) * length, startPos[1] + Math.sin(angle) * length];
+
+  const parts: [number, number][] = [];
+  for (let j = 0; j < partCount; j++) {
+    const t = j / (partCount - 1);
+    parts.push([startPos[0] + (defaultPos[0] - startPos[0]) * t, startPos[1] + (defaultPos[1] - startPos[1]) * t]);
+  }
+
+  return {
+    startPos,
+    defaultLength: length,
+    defaultPos,
+    parts,
+    target: null,
+    t: 0,
+    switchT: 0,
+    speed: Math.random() * 0.04 + 0.02,
+    phase: Math.random() * Math.PI * 2,
+    curveBias: (Math.random() - 0.5) * 60,
+  };
 }
 
 export function FABRIK(p: p5, t: Tentacle): [number, number][] {
@@ -84,74 +102,108 @@ export function FABRIK(p: p5, t: Tentacle): [number, number][] {
   return newParts;
 }
 
-export function updateTentacle(vSensorAccumulate: Vaccumulate[], vSensor: VSensor) {
-  for (const t of vSensor.tentacles) {
-    for (const a of vSensorAccumulate) {
-      const dx = a.pos[0] - vSensor.checkerGrid.pos[0];
-      const dy = a.pos[1] - vSensor.checkerGrid.pos[1];
-      const d = Math.sqrt(dx * dx + dy * dy);
-      if (d > t.defaultLength * 2) continue;
+export function updateTentacle(vSensorAccumulate: Vaccumulate[], vSensor: VSensor[]) {
+  for (const v of vSensor) {
+    const t = v.tentacle;
+    const [vx, vy] = v.checkerGrid.pos;
+    const a = vSensorAccumulate.find((acc) => acc.pos[0] === vx && acc.pos[1] === vy);
 
-      if (t.t > 0) continue;
+    // 자극받았고, (새 자극이거나 전환 타이밍) 이고, 죽은 촉수 부활 아닌 경우만 target 갱신
+    if (a && a.freq > 0) {
+      const isNewStim = a.freq !== (a.lastFreq ?? 0);
+      const switchReady = t.switchT <= 0;
 
-      if (a.freq <= 1) {
-        //1~6중 랜덤 1택
-        const randStage = Math.floor(Math.random() * STEP_OFFSETS.length);
-        const randPoss = STEP_OFFSETS[randStage];
-        const [x, y] = randPoss[Math.floor(Math.random() * randPoss.length)];
+      const canUpdate = (isNewStim || switchReady) && !(!isNewStim && t.t <= 0);
 
-        t.target = [a.pos[0] + x * GRID, a.pos[1] + y * GRID];
-        //10초가 될라나?
-        t.t = Math.floor(Math.random() * 10);
-      } else {
-        const idx = Math.min(Math.floor(a.freq / 10), STEP_OFFSETS.length - 1);
-        const reverseStage = STEP_OFFSETS.length - 1 - idx;
-        const randPoss = STEP_OFFSETS[reverseStage];
-        const [x, y] = randPoss[Math.floor(Math.random() * randPoss.length)];
+      if (canUpdate) {
+        // 근처 다른 vSensor들 모으기
+        const candidates: VSensor[] = [];
+        for (const other of vSensor) {
+          if (other === v) continue;
+          const dx = other.checkerGrid.pos[0] - vx;
+          const dy = other.checkerGrid.pos[1] - vy;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          if (d <= t.defaultLength * 2) candidates.push(other);
+        }
 
-        t.target = [a.pos[0] + x * GRID, a.pos[1] + y * GRID];
-        t.t = a.freq * 60;
+        if (candidates.length > 0) {
+          const other = candidates[Math.floor(Math.random() * candidates.length)];
+          const maxStage = STEP_OFFSETS.length - 1;
+          const ratio = Math.min(a.freq / 50, 1);
+          const stage = Math.round(maxStage * (1 - ratio));
+
+          const randPoss = STEP_OFFSETS[stage];
+          const [x, y] = randPoss[Math.floor(Math.random() * randPoss.length)];
+
+          t.target = [other.checkerGrid.pos[0] + x * GRID, other.checkerGrid.pos[1] + y * GRID];
+
+          if (isNewStim) t.t = a.freq * 10;
+
+          const switchCount = Math.max(1, Math.round(3 * (1 - ratio)));
+          t.switchT = t.t / switchCount;
+        }
       }
     }
+
+    // 수명/전환 타이머는 모든 vSensor에서 매 프레임 감소
+    t.t -= TIME;
+    t.switchT -= TIME;
+    if (t.t <= 0) t.target = null;
   }
-  for (const t of vSensor.tentacles) t.t -= TIME;
 }
 
-export function drawFABRIK(p: p5, t: Tentacle) {
+export function syncAccumulateLastFreq(vSensorAccumulate: Vaccumulate[]) {
+  for (const a of vSensorAccumulate) {
+    a.lastFreq = a.freq;
+  }
+}
+
+export function drawFABRIK(p: p5, t: Tentacle, acc?: Vaccumulate) {
   if (t.target == null) return;
 
   const newParts = FABRIK(p, t);
   if (newParts.length > 0) t.parts = newParts;
 
-  const lineColor = [0, 0, 0];
-  const lineWeight = 15;
-  const pointSize = 5;
+  const lineColor: [number, number, number] = [0, 0, 255];
+  const brightColor: [number, number, number] = [247, 0, 137];
+
+  const freq = acc?.lastFreq ?? acc?.freq ?? 0;
+  const prob = Math.min(freq / 50, 1);
+  const currentColor: [number, number, number] = [
+    lineColor[0] + (brightColor[0] - lineColor[0]) * prob,
+    lineColor[1] + (brightColor[1] - lineColor[1]) * prob,
+    lineColor[2] + (brightColor[2] - lineColor[2]) * prob,
+  ];
+
+  const lineWeight = 7;
+  const pointSize = 20;
 
   p.strokeWeight(lineWeight);
-  p.stroke(lineColor);
+  p.stroke(currentColor);
   for (let i = 0; i < t.parts.length - 1; i++) {
     const [x1, y1] = computePos4Shader(t.parts[i]);
     const [x2, y2] = computePos4Shader(t.parts[i + 1]);
     p.line(x1, y1, x2, y2);
   }
 
-  p.fill(lineColor);
+  p.fill(currentColor);
   for (const b of t.parts) {
     const [x, y] = computePos4Shader(b);
-    p.circle(x, y, pointSize);
+    p.strokeWeight(2);
+    p.stroke(0);
+    drawCross(p, x, y);
   }
 }
 
 export function tenOccupied(fg: CheckerGrid[], vSensor: VSensor[]): [number, number][] {
   const occupied: [number, number][] = [];
   for (const v of vSensor) {
-    for (const t of v.tentacles) {
-      occupied.push(snapToCheck(t.startPos, fg));
-      for (const part of t.parts) {
-        occupied.push(snapToCheck(part, fg));
-      }
-      if (t.target) occupied.push(snapToCheck(t.target, fg));
+    const t = v.tentacle;
+    occupied.push(snapToCheck(t.startPos, fg));
+    for (const part of t.parts) {
+      occupied.push(snapToCheck(part, fg));
     }
+    if (t.target) occupied.push(snapToCheck(t.target, fg));
   }
   return occupied;
 }

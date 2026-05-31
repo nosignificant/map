@@ -11,7 +11,7 @@ export type VSensor = {
   near: VsensorImagePos[];
   clickCount: number;
   connect: Connect[];
-  tentacles: Tentacle[];
+  tentacle: Tentacle;
   strength: number;
   currentStage: number;
 };
@@ -25,8 +25,16 @@ export type Ssensor = {
 
 export type SsensorImagePos = {
   pos: [number, number];
-  image: p5.Image;
+  imgSet: ImgSet;
+  tentacle: Tentacle;
   t: number;
+};
+
+export type ImgSet = { img: p5.Image; edgeResult: EdgeResult };
+
+export type EdgeResult = {
+  drawn: [number, number][]; // 이미지가 차지한 칸들
+  outline: [number, number][]; // 외곽선 칸들
 };
 
 //T sensor images
@@ -51,10 +59,11 @@ export type Tentacle = {
   parts: [number, number][];
   target: [number, number] | null;
   t: number;
+  switchT: number; // 다음 target 전환까지 남은 시간
   speed: number;
   phase: number;
   curveBias: number; // baseline 휨 정도 (양수=한쪽, 음수=반대쪽)
 };
 
-export type Vaccumulate = { pos: [number, number]; freq: number };
+export type Vaccumulate = { pos: [number, number]; freq: number; lastFreq?: number };
 export type Saccumulate = { pos: [number, number]; angle: number; dist: number; freq: number };

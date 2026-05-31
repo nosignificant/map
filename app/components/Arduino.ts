@@ -4,14 +4,12 @@ import { fullGrid } from "./drawings/checkerboard";
 import { sSensorUnits } from "./Util/imageStore";
 import { INITtime, TIME, CANVAS } from "./Util/constant";
 import { initSsensorIMGpos, updateSSensorImage, CMtoPX, ANGLE_STEP } from "./sensors/sSensor";
-import { initTentacle, tenOccupied, updateTentacle } from "./drawings/tentacles";
+import { tenOccupied, updateTentacle, syncAccumulateLastFreq } from "./drawings/tentacles";
 
 export const fg = fullGrid();
 export const vSensor: VSensor[] = initVSensor(fg);
+// tentacle은 initVSensor 안에서 각 vSensor에 이미 생성됨
 
-for (const v of vSensor) {
-  v.tentacles = initTentacle(v, 1, 100, 6);
-}
 // 매 tick에서 갱신되는 씬 데이터 (Sketch에서 import해서 그대로 사용)
 export const tOccupied: [number, number][] = [];
 
@@ -25,10 +23,10 @@ while (sensorPos.length < 50) sensorPos.push(0);
 // ===== fg 점마다 4 모서리 색상 보간 (모듈 로드 시 1번만 계산) =====
 
 // 4 모서리 색상 (RGB) — 화려한 보색
-const CORNER_TL: [number, number, number] = [255, 80, 80]; // 빨강 (좌상단)
-const CORNER_TR: [number, number, number] = [80, 255, 80]; // 초록 (우상단)
-const CORNER_BL: [number, number, number] = [80, 80, 255]; // 파랑 (좌하단)
-const CORNER_BR: [number, number, number] = [255, 255, 80]; // 노랑 (우하단)
+const CORNER_TL: [number, number, number] = [199, 255, 86]; // 빨강 (좌상단)
+const CORNER_TR: [number, number, number] = [89, 0, 255]; // 초록 (우상단)
+const CORNER_BL: [number, number, number] = [199, 255, 86]; // 파랑 (좌하단)
+const CORNER_BR: [number, number, number] = [89, 0, 255]; // 노랑 (우하단)
 
 function bilinearColor(x: number, y: number): [number, number, number] {
   const u = x / CANVAS;
@@ -191,8 +189,8 @@ export function updateVsensorAccumulate(acc: Vaccumulate[], x: number, y: number
 }
 
 export function updateSsensorAccumulate(acc: Saccumulate[], x: number, y: number, angle: number, dist: number) {
-  const an = Math.round(angle / ANGLE_STEP) * ANGLE_STEP;  // 0, 3, 6, ..., 180
-  const d = Math.floor(dist / CMtoPX);                     // 0, 1, 2, ... cell 인덱스
+  const an = Math.round(angle / ANGLE_STEP) * ANGLE_STEP; // 0, 3, 6, ..., 180
+  const d = Math.floor(dist / CMtoPX); // 0, 1, 2, ... cell 인덱스
   const found = acc.find((a) => a.angle === an && a.dist === d);
   if (found) {
     found.freq++;
@@ -217,9 +215,11 @@ function startSensorTick() {
     updateSSensorImage(currentSsensor1IMG, TIME);
     updateSSensorImage(currentSsensor2IMG, TIME);
 
-    for (const v of vSensor) {
-      updateTentacle(vSensorAccumulate, v);
-    }
+    updateTentacle(vSensorAccumulate, vSensor);
+
+    // 모든 vSensor 처리 후 1번만 — 다음 프레임 비교 기준 갱신
+    syncAccumulateLastFreq(vSensorAccumulate);
+
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);

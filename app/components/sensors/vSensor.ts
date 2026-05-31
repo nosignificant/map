@@ -1,11 +1,33 @@
 import type p5 from "p5";
-import { CheckerGrid, VSensor, VsensorImagePos, Connect } from "../Util/types";
+import { CheckerGrid, VSensor, VsensorImagePos, Connect, Tentacle } from "../Util/types";
 import { GRID, TIME, TRAIL_SPEED, STEP_OFFSETS, CANVAS } from "../Util/constant";
 import { findPath } from "../Util/BFS";
 import { vSensorUnits } from "../Util/imageStore";
 import { updateHistoryArr } from "../SketchHistory";
 import { computePos4Shader } from "../Util/shaderUtil";
 import { colorAt } from "../Arduino";
+
+// 촉수 1개 생성 (startPos 기준)
+function makeTentacle(startPos: [number, number], length: number, partCount: number): Tentacle {
+  const defaultPos: [number, number] = [startPos[0] + length, startPos[1]];
+  const parts: [number, number][] = [];
+  for (let j = 0; j < partCount; j++) {
+    const t = j / (partCount - 1);
+    parts.push([startPos[0] + (defaultPos[0] - startPos[0]) * t, startPos[1] + (defaultPos[1] - startPos[1]) * t]);
+  }
+  return {
+    startPos,
+    defaultLength: length,
+    defaultPos,
+    parts,
+    target: null,
+    t: 0,
+    switchT: 0,
+    speed: Math.random() * 0.04 + 0.02,
+    phase: Math.random() * Math.PI * 2,
+    curveBias: (Math.random() - 0.5) * 60,
+  };
+}
 
 export function initVSensor(checker: CheckerGrid[]): VSensor[] {
   const result: VSensor[] = [];
@@ -21,12 +43,13 @@ export function initVSensor(checker: CheckerGrid[]): VSensor[] {
 
   for (const col of cols) {
     for (const row of rows) {
+      const pos: [number, number] = [col.x, row.y];
       result.push({
-        checkerGrid: { grid: { ri: row.ri, ci: col.ci }, pos: [col.x, row.y] },
+        checkerGrid: { grid: { ri: row.ri, ci: col.ci }, pos },
         near: [],
         clickCount: 0,
         connect: [],
-        tentacles: [],
+        tentacle: makeTentacle(pos, 100, 6),
         strength: 0,
         currentStage: 0,
       });
@@ -59,7 +82,7 @@ export function snapToSensor(p: p5, src: VSensor[]): VSensor {
     near: [],
     clickCount: 0,
     connect: [],
-    tentacles: [],
+    tentacle: makeTentacle([0, 0], 100, 6),
     strength: 0,
     currentStage: 0,
   };
@@ -122,22 +145,16 @@ export function path2AndFilter(checker: CheckerGrid[], from: [number, number], t
 
 let altToggle = false;
 
-export function updateConnection(v: VSensor, vSensor: VSensor[], fg: CheckerGrid[]) {
+export function updateConnection(v: VSensor, fg: CheckerGrid[]) {
   if (v.strength <= 0) return;
 
-  const threshold = GRID * 15;
-  const candidates: VSensor[] = [];
-  for (const other of vSensor) {
-    if (other === v) continue;
-    if (other.strength < 10) continue;
-    const d = Math.hypot(v.checkerGrid.pos[0] - other.checkerGrid.pos[0], v.checkerGrid.pos[1] - other.checkerGrid.pos[1]);
-    if (d < threshold) candidates.push(other);
-  }
-  if (candidates.length === 0) return;
+  // 목적지 = 이 vSensor 촉수의 target
+  const target = v.tentacle.target;
+  if (!target) return;
 
-  const other = candidates[Math.floor(Math.random() * candidates.length)];
   const from: [number, number] = [v.checkerGrid.pos[0], v.checkerGrid.pos[1]];
-  const to: [number, number] = [other.checkerGrid.pos[0], other.checkerGrid.pos[1]];
+  const to: [number, number] = [Math.round(target[0]), Math.round(target[1])];
+
   v.connect.push({ path: path2AndFilter(fg, from, to), t: 0, alt: altToggle });
   altToggle = !altToggle;
 }
@@ -167,12 +184,15 @@ export function drawConnection(p: p5, vSensor: VSensor[]) {
       const [hx, hy] = c.path[cur];
       drawUpAndDown(p, hx, hy, currentPathOcc, c.alt);
 
-      p.stroke(0);
+      p.stroke(89, 0, 255);
       p.strokeWeight(GRID);
+
       for (let j = 0; j < cur; j++) {
         const [x1, y1] = computePos4Shader(c.path[j]);
         const [x2, y2] = computePos4Shader(c.path[j + 1]);
-        p.line(x1, y1, x2, y2);
+        const avgX = (x1 + x2) / 2;
+        const avgY = (y1 + y2) / 2;
+        p.line(avgX - GRID / 2, avgY - GRID / 2, avgX + GRID / 2, avgY + GRID / 2);
       }
     }
   }
@@ -181,27 +201,26 @@ export function drawConnection(p: p5, vSensor: VSensor[]) {
 export function drawUpAndDown(p: p5, hx: number, hy: number, currentPathOcc: [number, number][], alt: boolean) {
   const half = CANVAS / 2;
   p.strokeWeight(GRID - 2);
+  const [r, g, b] = [199, 255, 86]; // 빨강 (좌상단)
 
-  const horizColor: [number, number, number] = alt ? [0, 0, 255] : [255, 0, 0];
-  const vertColor: [number, number, number] = alt ? [255, 0, 0] : [0, 0, 255];
+  //const horizColor: [number, number, number] = alt ? [0, 0, 255] : [255, 0, 0];
+  //const vertColor: [number, number, number] = alt ? [255, 0, 0] : [0, 0, 255];
 
   for (const pos of currentPathOcc) {
-    //const color = colorAt(pos[0], pos[1]);
-
     const [rawX, rawY] = pos;
     if (rawX === hx && rawY === hy) continue;
 
     const [px, py] = computePos4Shader([rawX, rawY]);
+    p.stroke(r, g, b);
 
-    p.stroke(...horizColor);
-    //p.stroke(color[0], color[1], color[2]);
+    //p.stroke(...horizColor);
     if (px < 0) {
       p.rect(-half, py - GRID / 2, px + half, GRID);
     } else {
       p.rect(px, py - GRID / 2, half - px, GRID);
     }
 
-    p.stroke(...vertColor);
+    //p.stroke(...vertColor);
     if (py < 0) {
       p.rect(px - GRID / 2, -half, GRID, py + half);
     } else {
@@ -212,5 +231,5 @@ export function drawUpAndDown(p: p5, hx: number, hy: number, currentPathOcc: [nu
 
 export function vSensorAlert(x: number, y: number, vSensor: VSensor[], fg: CheckerGrid[]) {
   const v = vSensor.find((a) => a.checkerGrid.pos[0] === x && a.checkerGrid.pos[1] == y);
-  if (v) updateConnection(v, vSensor, fg);
+  if (v) updateConnection(v, fg);
 }

@@ -34,7 +34,9 @@ void main(){
     col = drawConnections(p, col);
     col = drawTapestry(p, col);
 
-    float a = max(col.r, max(col.g, col.b));
+    // 뭔가 그려진 곳(색이 0이 아닌 곳)은 완전 불투명, 배경은 투명
+    float brightness = max(col.r, max(col.g, col.b));
+    float a = brightness > 0.001 ? 1.0 : 0.0;
     gl_FragColor = vec4(col, a);
 
 }

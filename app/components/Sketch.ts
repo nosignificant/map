@@ -48,11 +48,10 @@ export function Sketch(container: HTMLElement) {
       p.rect(-CANVAS / 2, -CANVAS / 2, CANVAS, CANVAS);
       p.resetShader();
 
-      // 3) 촉수
+      // 3) 촉수 (vSensor당 1개)
       for (const v of vSensor) {
-        for (const t of v.tentacles) {
-          drawFABRIK(p, t);
-        }
+        const acc = vSensorAccumulate.find((a) => a.pos[0] === v.checkerGrid.pos[0] && a.pos[1] === v.checkerGrid.pos[1]);
+        drawFABRIK(p, v.tentacle, acc);
       }
     };
 
