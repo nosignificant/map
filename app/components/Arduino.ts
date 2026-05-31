@@ -1,13 +1,13 @@
-import { VSensor, Ssensor, Vaccumulate, Saccumulate, SsensorImagePos } from "./Util/types";
-import { initVSensor, vSensorAlert } from "./sensors/vSensor";
+import { VSensor, Ssensor, Vaccumulate, Saccumulate, Accumulate } from "./Util/types";
+import { initVSensor } from "./sensors/vSensor";
 import { fullGrid } from "./drawings/checkerboard";
 import { INITtime, TIME, CANVAS } from "./Util/constant";
-import { initSsensorIMGpos, updateSSensorImage, CMtoPX, ANGLE_STEP } from "./sensors/sSensor";
-import { tenOccupied, updateTentacle, syncAccumulateLastFreq } from "./drawings/tentacles";
+import { initSsensor, updateSSensorImage, CMtoPX, ANGLE_STEP } from "./sensors/sSensor";
+import { tenOccupied, updateTtentacle, syncAccumulateLastFreq, updateStentacle } from "./drawings/tentacles";
+import { initParticles, updateParticles } from "./particles";
 
 export const fg = fullGrid();
 export const vSensor: VSensor[] = initVSensor(fg);
-// tentacle은 initVSensor 안에서 각 vSensor에 이미 생성됨
 
 // 매 tick에서 갱신되는 씬 데이터 (Sketch에서 import해서 그대로 사용)
 export const tOccupied: [number, number][] = [];
@@ -20,17 +20,16 @@ for (const v of vSensor) {
 while (sensorPos.length < 50) sensorPos.push(0);
 
 // sSensor 위쪽 반원
-export const sSensor1: Ssensor = { id: 1, angle: 0, distance: 0, dir: -1 };
-export const currentSsensor1IMG: SsensorImagePos[] = [];
+export const Ssensor1: Ssensor[] = [];
 
 // sSensor 아래쪽 반원
-export const sSensor2: Ssensor = { id: 2, angle: 0, distance: 0, dir: 1 };
-export const currentSsensor2IMG: SsensorImagePos[] = [];
+export const Ssensor2: Ssensor[] = [];
 
 //accumulate
 export const vSensorAccumulate: Vaccumulate[] = [];
 export const sSensor1Accumulate: Saccumulate[] = [];
 export const sSensor2Accumulate: Saccumulate[] = [];
+export const accumulate: Accumulate[] = [];
 
 // WebSocket
 let connected = false;
@@ -79,13 +78,13 @@ export function initArduino() {
       const id = parseInt(match[1]);
       const angle = parseInt(match[2]);
       const distance = parseFloat(match[3]);
-      const newSSimg = initSsensorIMGpos(angle, distance, INITtime, id == 1 ? -1 : 1);
+      const newSSimg = initSsensor(angle, distance, INITtime, id == 1 ? -1 : 1);
       if (newSSimg == null) return;
-      if (id == 1) currentSsensor1IMG.push(newSSimg);
-      else if (id == 2) currentSsensor2IMG.push(newSSimg);
+      if (id == 1) Ssensor1.push(newSSimg);
+      else if (id == 2) Ssensor2.push(newSSimg);
 
       //개수 증가 — angle, distance 원본값 전달
-      updateSsensorAccumulate(id == 1 ? sSensor1Accumulate : sSensor2Accumulate, newSSimg.pos[0], newSSimg.pos[1], angle, distance);
+      updateSsensorAccumulate(id == 1 ? sSensor1Accumulate : sSensor2Accumulate, newSSimg.pos[0], newSSimg.pos[1], angle);
     }
   };
 
@@ -100,17 +99,17 @@ export function randomizeSSensor() {
   const distance = TEST_STAGES[testStageIdx++ % TEST_STAGES.length];
 
   const angle1 = Math.floor(Math.random() * 181);
-  const img1 = initSsensorIMGpos(angle1, distance, INITtime, -1);
+  const img1 = initSsensor(angle1, distance, INITtime, -1);
   if (img1) {
-    currentSsensor1IMG.push(img1);
-    updateSsensorAccumulate(sSensor1Accumulate, img1.pos[0], img1.pos[1], angle1, distance);
+    Ssensor1.push(img1);
+    updateSsensorAccumulate(sSensor1Accumulate, img1.pos[0], img1.pos[1], angle1);
   }
 
   const angle2 = Math.floor(Math.random() * 181);
-  const img2 = initSsensorIMGpos(angle2, distance, INITtime, 1);
+  const img2 = initSsensor(angle2, distance, INITtime, 1);
   if (img2) {
-    currentSsensor2IMG.push(img2);
-    updateSsensorAccumulate(sSensor2Accumulate, img2.pos[0], img2.pos[1], angle2, distance);
+    Ssensor2.push(img2);
+    updateSsensorAccumulate(sSensor2Accumulate, img2.pos[0], img2.pos[1], angle2);
   }
 }
 
@@ -149,28 +148,26 @@ export async function saveAccumulateToDisk() {
   }
 }
 
-const MAX_ACCUM = 200;
+const MAX_ACCUM = 100;
 
 export function updateVsensorAccumulate(acc: Vaccumulate[], x: number, y: number) {
   const found = acc.find((a) => a.pos[0] === x && a.pos[1] === y);
   if (found) {
     found.freq++;
-    vSensorAlert(found.pos[0], found.pos[1], vSensor, fg);
   } else {
     if (acc.length >= MAX_ACCUM) acc.shift();
     acc.push({ pos: [x, y], freq: 1 });
   }
 }
 
-export function updateSsensorAccumulate(acc: Saccumulate[], x: number, y: number, angle: number, dist: number) {
+export function updateSsensorAccumulate(acc: Saccumulate[], x: number, y: number, angle: number) {
   const an = Math.round(angle / ANGLE_STEP) * ANGLE_STEP;
-  const d = Math.floor(dist / CMtoPX);
-  const found = acc.find((a) => a.angle === an && a.dist === d);
+  const found = acc.find((a) => a.angle === an);
   if (found) {
     found.freq++;
   } else {
     if (acc.length >= MAX_ACCUM) acc.shift();
-    acc.push({ pos: [x, y], angle: an, dist: d, freq: 1 });
+    acc.push({ pos: [x, y], angle: an, freq: 1 });
   }
 }
 
@@ -181,21 +178,47 @@ function startSensorTick() {
   if (typeof window === "undefined") return;
   tickStarted = true;
 
+  //initParticles();
+
   function loop() {
+    // ① accumulate 통합 위치 먼저 갱신
+    updateAccumulate();
+
+    // ② 촉수 업데이트 (최신 accumulate 사용)
+    updateTtentacle(vSensorAccumulate, accumulate, vSensor, fg);
+
     const newOcc = tenOccupied(fg, vSensor);
     tOccupied.length = 0;
     tOccupied.push(...newOcc);
 
     //t 확인하고 0 되면 제거
-    updateSSensorImage(currentSsensor1IMG, TIME);
-    updateSSensorImage(currentSsensor2IMG, TIME);
+    updateSSensorImage(sSensor1Accumulate, Ssensor1, TIME);
+    updateSSensorImage(sSensor2Accumulate, Ssensor2, TIME);
 
-    updateTentacle(vSensorAccumulate, vSensor);
+    // sSensor 발 target 설정 (없으면 drawFABRIK이 안 그림)
+    updateStentacle(Ssensor1, fg);
+    updateStentacle(Ssensor2, fg);
 
     // 모든 vSensor 처리 후 1번만 — 다음 프레임 비교 기준 갱신
     syncAccumulateLastFreq(vSensorAccumulate);
 
+    // ③ 배경 파티클 — accum(끌림) + tOccupied(밀림)
+    //    sSensor accum은 center-origin이라 +CANVAS/2로 top-left 변환
+    const attractors = [
+      ...vSensorAccumulate.map((a) => ({ pos: a.pos, freq: a.freq })),
+      ...sSensor1Accumulate.map((a) => ({ pos: [a.pos[0] + CANVAS / 2, a.pos[1] + CANVAS / 2] as [number, number], freq: a.freq })),
+      ...sSensor2Accumulate.map((a) => ({ pos: [a.pos[0] + CANVAS / 2, a.pos[1] + CANVAS / 2] as [number, number], freq: a.freq })),
+    ];
+    //updateParticles(attractors, tOccupied);
+
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
+}
+
+function updateAccumulate() {
+  accumulate.length = 0;
+  accumulate.push(...vSensorAccumulate.map((a) => ({ pos: a.pos, freq: a.freq })));
+  accumulate.push(...sSensor1Accumulate.map((a) => ({ pos: a.pos, freq: a.freq })));
+  accumulate.push(...sSensor2Accumulate.map((a) => ({ pos: a.pos, freq: a.freq })));
 }

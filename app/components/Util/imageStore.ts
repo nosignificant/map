@@ -28,11 +28,14 @@ export async function initImages(p: p5) {
 
   await urlsReady;
 
-  vSensorImageUrls.forEach((url) => p.loadImage(url, (img) => vSensorUnits.push(img)));
-  sSensorImageUrls.forEach((url) =>
+  for (const url of vSensorImageUrls) {
     p.loadImage(url, (img) => {
-      sSensorUnits.set(url, img);
-      sSensorImgSets.set(url, MakeImgSet(p, img)); // ← 로드 시 edge도 계산
-    })
-  );
+      vSensorUnits.push(img);
+    });
+  }
+  for (const url of sSensorImageUrls) {
+    p.loadImage(url, (img) => {
+      sSensorImgSets.set(url, MakeImgSet(p, img));
+    });
+  }
 }

@@ -17,17 +17,12 @@ export type VSensor = {
 };
 
 export type Ssensor = {
-  id: number;
-  angle: number;
-  distance: number;
-  dir: number;
-};
-
-export type SsensorImagePos = {
   pos: [number, number];
+  angle: number;
   imgSet: ImgSet;
-  tentacle: Tentacle;
+  tentacles: Tentacle[];
   t: number;
+  settle: boolean;
 };
 
 export type ImgSet = { img: p5.Image; edgeResult: EdgeResult };
@@ -66,4 +61,5 @@ export type Tentacle = {
 };
 
 export type Vaccumulate = { pos: [number, number]; freq: number; lastFreq?: number };
-export type Saccumulate = { pos: [number, number]; angle: number; dist: number; freq: number };
+export type Saccumulate = { pos: [number, number]; angle: number; freq: number };
+export type Accumulate = { pos: [number, number]; freq: number };

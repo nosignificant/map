@@ -8,12 +8,16 @@ import { Sketch } from "./Sketch";
 import { SketchUnit } from "./SketchUnit";
 import { SketchSonar } from "./SketchSonar";
 import { SketchHistory } from "./SketchHistory";
+import { SketchPrint } from "./SketchPrint";
+import { SketchParticles } from "./SketchParticles";
 
 const SKETCHES = {
   main: Sketch,
   unit: SketchUnit,
   sonar: SketchSonar,
   history: SketchHistory,
+  print: SketchPrint,
+  particles: SketchParticles,
 };
 
 export default function P5Sketch({ sketchName = "main" }: { sketchName?: keyof typeof SKETCHES }) {

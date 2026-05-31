@@ -1,6 +1,6 @@
 import type p5 from "p5";
 import { CheckerGrid, VSensor, VsensorImagePos, Connect, Tentacle } from "../Util/types";
-import { GRID, TIME, TRAIL_SPEED, STEP_OFFSETS, CANVAS } from "../Util/constant";
+import { GRID, TIME, TRAIL_SPEED, STEP_OFFSETS } from "../Util/constant";
 import { findPath } from "../Util/BFS";
 import { vSensorUnits } from "../Util/imageStore";
 import { updateHistoryArr } from "../SketchHistory";
@@ -125,6 +125,7 @@ let altToggle = false;
 
 export function updateConnection(v: VSensor, fg: CheckerGrid[]) {
   if (v.strength <= 0) return;
+  if (v.connect.length >= 1) return; // 최대 1개
 
   // 목적지 = 이 vSensor 촉수의 target
   const target = v.tentacle.target;
@@ -157,11 +158,9 @@ export function drawConnection(p: p5, vSensor: VSensor[]) {
       const drawCount = Math.floor(c.t / TIME);
       const cur = Math.max(0, Math.min(drawCount, c.path.length - 1));
       p.strokeCap(p.SQUARE);
-
-      const currentPathOcc = c.path.slice(0, cur + 1);
-      const [hx, hy] = c.path[cur];
-      drawUpAndDown(p, hx, hy, currentPathOcc, c.alt);
-
+      //const currentPathOcc = c.path.slice(0, cur + 1);
+      //const [hx, hy] = c.path[cur];
+      //drawUpAndDown(p, hx, hy, currentPathOcc, c.alt);
       p.stroke(89, 0, 255);
       p.strokeWeight(GRID);
 
@@ -205,9 +204,4 @@ export function drawUpAndDown(p: p5, hx: number, hy: number, currentPathOcc: [nu
       p.rect(px - GRID / 2, py, GRID, half - py);
     }
   }
-}
-
-export function vSensorAlert(x: number, y: number, vSensor: VSensor[], fg: CheckerGrid[]) {
-  const v = vSensor.find((a) => a.checkerGrid.pos[0] === x && a.checkerGrid.pos[1] == y);
-  if (v) updateConnection(v, fg);
 }

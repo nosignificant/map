@@ -2,11 +2,18 @@
 
 const MAX = 15;
 
-const currentVtenPos: [number, number][] = [];
+export const currentVtenPos: [number, number][] = [];
 
-const currentVtenPos: [number, number][] = [];
+export const currentStenPos: [number, number][] = [];
 
-export function reportCurrent(x: number, y: number) {
-  if (currentVtenPos.length > 15) currentVtenPos.splice(0, 1);
+// vSensor 촉수 궤적
+export function reportVten(x: number, y: number) {
+  if (currentVtenPos.length >= MAX) currentVtenPos.shift();
   currentVtenPos.push([x, y]);
+}
+
+// sSensor 발 궤적
+export function reportSten(x: number, y: number) {
+  if (currentStenPos.length >= MAX) currentStenPos.shift();
+  currentStenPos.push([x, y]);
 }

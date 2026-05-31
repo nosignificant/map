@@ -5,7 +5,7 @@ import { vSensor, randomizeSSensor, initArduino, vSensorAccumulate, updateVsenso
 import { shaderCobine } from "./Util/shaderUtil";
 import { initImages } from "./Util/imageStore";
 import { drawFABRIK } from "./drawings/tentacles";
-import { drawConnection, vSensorAlert } from "./sensors/vSensor";
+import { drawConnection } from "./sensors/vSensor";
 import { CheckerGrid } from "./Util/types";
 
 export function Sketch(container: HTMLElement) {
@@ -81,7 +81,6 @@ export function Sketch(container: HTMLElement) {
 
       const [cx, cy] = closest.checkerGrid.pos;
       updateVsensorAccumulate(vSensorAccumulate, cx, cy);
-      vSensorAlert(cx, cy, vSensor, fg);
     };
   }, container);
 

@@ -6,7 +6,11 @@ export default function Home() {
   return (
     <div className="flex flex-row flex-1 items-center justify-center font-sans py-16 gap-8">
       {/* 메인 무대 — 1200×1200에 모든 레이어 겹침 (조작용) */}
-      <div className="borderWhite" style={mainStageStyle(1200)}>
+      <div style={mainStageStyle(1200)}>
+        {/* 파티클 (임시로 맨 앞 — 보이는지 확인용) */}
+        <div style={overlayLayerStyle(10, 1200)}>
+          <P5SketchLoader sketchName="particles" />
+        </div>
         <div style={overlayLayerStyle(1, 1200, true)}>
           <P5SketchLoader sketchName="main" />
         </div>
@@ -16,43 +20,30 @@ export default function Home() {
         <div style={overlayLayerStyle(3, 1200)}>
           <P5SketchLoader sketchName="sonar" />
         </div>
-        <div style={overlayLayerStyle(4, 1200)}>
-          <P5SketchLoader sketchName="history" />
-        </div>
+      </div>
+      <div style={overlayLayerStyle(4, 1200)}>
+        <P5SketchLoader sketchName="history" />
       </div>
 
-      {/* 출력용 무대 — 색반전, Enter 누르면 이거 다운로드 */}
+      {/* 출력용 궤적 스케치 (Enter 누르면 이것만 PNG로 다운로드) */}
+      <div className="borderWhite" style={printPreviewStyle(600)}>
+        <div className="print-source" style={miniScale(0.5)}>
+          <P5SketchLoader sketchName="print" />
+        </div>
+      </div>
       <PrintDownloader targetSelector=".print-source" />
-      <div
-        className="borderWhite print-source"
-        style={{
-          ...mainStageStyle(400),
-          background: "white",
-          filter: "invert(1)",
-          overflow: "hidden",
-        }}
-      >
-        여기 출력될 거 넣으세요
-      </div>
-      <div className="flex flex-row gap-2">
-        <div style={overlayLayerStyle(4, 1200)}>
-          <P5SketchLoader sketchName="history" />
-        </div>
-        <div className="flex flex-col gap-2">
-          <div className="borderWhite" style={miniStyle(600)}>
-            <div style={miniScale(0.333)}>
-              <P5SketchLoader sketchName="unit" />
-            </div>
-          </div>
-          <div className="borderWhite" style={miniStyle(600)}>
-            <div style={miniScale(0.333)}>
-              <P5SketchLoader sketchName="sonar" />
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
+}
+
+// 출력 미리보기 — 흰 배경 + 1200 캔버스를 박스 안으로 잘라넣음
+function printPreviewStyle(size: number): React.CSSProperties {
+  return {
+    width: size,
+    height: size,
+    overflow: "hidden",
+    background: "white",
+  };
 }
 
 // 메인 무대 — absolute 자식 담는 컨테이너

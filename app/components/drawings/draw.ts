@@ -3,28 +3,6 @@ import { ImgSet } from "../Util/types";
 import { GRID, CANVAS, rows, cols } from "../Util/constant";
 import { dilate } from "../Util/edgeAndCorner";
 
-//이미지 외곽 그리기
-export function drawOutline(p: p5, set: ImgSet[], occupied: boolean[][]) {
-  p.fill(0);
-  p.noStroke();
-
-  for (const img of set) {
-    const outline = img.edgeResult.outline; // [ci, ri][]
-
-    for (const pl of img.PlacedImage) {
-      for (const [ci, ri] of outline) {
-        const cellX = pl.pos.x + (ci - 1) * GRID;
-        const cellY = pl.pos.y + (ri - 1) * GRID;
-
-        const outRow = Math.floor(cellY / GRID);
-        const outCol = Math.floor(cellX / GRID);
-        if (occupied[outRow]?.[outCol]) continue;
-        //drawCircleCross(p, cellX, cellY);
-      }
-    }
-  }
-}
-
 //occupied 된거 +1 해서 그리기
 export function drawOffsetOccupied(p: p5, src: boolean[][]) {
   const dil = dilate(src);

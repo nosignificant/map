@@ -4,13 +4,13 @@ vec3 drawTapestry(vec2 p, vec3 col) {
   bool occupied = false;
   float minBoxSDF = 9999.0;
   float metaField = 0.0;
-  float metaRadius = uGrid * 0.5;
+  float metaRadius = uGrid * 0.48;
 
   for (int i = 0; i < 200; i++) {
     if (i >= uTenCount) break;
     if (length(gridP - uTenOccupied[i]) < uGrid * 0.5) occupied = true;
 
-    vec2 d = abs(p - uTenOccupied[i]) - vec2(uGrid * 0.4);
+    vec2 d = abs(p - uTenOccupied[i]) - vec2(uGrid * 0.26);
     float boxD = length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
     minBoxSDF = min(minBoxSDF, boxD);
 
@@ -23,7 +23,7 @@ vec3 drawTapestry(vec2 p, vec3 col) {
   }
 
   // metaball 내부 채우기: threshold 1.0 이상이면 색칠
-  float metaFill = smoothstep(1.0, 1.0, metaField);
+  float metaFill = smoothstep(0.8, 1.05, metaField);
 
   // occupied 영역
   if (occupied) {
@@ -32,14 +32,14 @@ vec3 drawTapestry(vec2 p, vec3 col) {
       float n = texture2D(uNoise, noiseUV).r;
       float prob = 0.5 * (1.0 - (-minBoxSDF) / uGrid);
       if (n < prob) {
-        col = mix(col, vec3(0,0,255), 1.0);
+        col = mix(col, vec3(0, 0, 255), 1.0);
       }
     }
-    col = mix(col, vec3(0,0,255), metaFill);
+    col = mix(col, vec3(0, 0, 255), metaFill);
     return col;
   }
 
-  col = mix(col, vec3(0,0,255), metaFill);
+  col = mix(col, vec3(0, 0, 255), metaFill);
 
   return col;
 }
