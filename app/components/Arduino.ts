@@ -1,7 +1,6 @@
 import { VSensor, Ssensor, Vaccumulate, Saccumulate, SsensorImagePos } from "./Util/types";
 import { initVSensor, vSensorAlert } from "./sensors/vSensor";
 import { fullGrid } from "./drawings/checkerboard";
-import { sSensorUnits } from "./Util/imageStore";
 import { INITtime, TIME, CANVAS } from "./Util/constant";
 import { initSsensorIMGpos, updateSSensorImage, CMtoPX, ANGLE_STEP } from "./sensors/sSensor";
 import { tenOccupied, updateTentacle, syncAccumulateLastFreq } from "./drawings/tentacles";
@@ -19,31 +18,6 @@ for (const v of vSensor) {
   sensorPos.push(v.checkerGrid.pos[0], v.checkerGrid.pos[1]);
 }
 while (sensorPos.length < 50) sensorPos.push(0);
-
-// ===== fg 점마다 4 모서리 색상 보간 (모듈 로드 시 1번만 계산) =====
-
-// 4 모서리 색상 (RGB) — 화려한 보색
-const CORNER_TL: [number, number, number] = [199, 255, 86]; // 빨강 (좌상단)
-const CORNER_TR: [number, number, number] = [89, 0, 255]; // 초록 (우상단)
-const CORNER_BL: [number, number, number] = [199, 255, 86]; // 파랑 (좌하단)
-const CORNER_BR: [number, number, number] = [89, 0, 255]; // 노랑 (우하단)
-
-function bilinearColor(x: number, y: number): [number, number, number] {
-  const u = x / CANVAS;
-  const v = y / CANVAS;
-  const r = CORNER_TL[0] * (1 - u) * (1 - v) + CORNER_TR[0] * u * (1 - v) + CORNER_BL[0] * (1 - u) * v + CORNER_BR[0] * u * v;
-  const g = CORNER_TL[1] * (1 - u) * (1 - v) + CORNER_TR[1] * u * (1 - v) + CORNER_BL[1] * (1 - u) * v + CORNER_BR[1] * u * v;
-  const b = CORNER_TL[2] * (1 - u) * (1 - v) + CORNER_TR[2] * u * (1 - v) + CORNER_BL[2] * (1 - u) * v + CORNER_BR[2] * u * v;
-  return [r, g, b];
-}
-
-// fg와 같은 순서로 색상 캐시
-export const fgColors: [number, number, number][] = fg.map((f) => bilinearColor(f.pos[0], f.pos[1]));
-
-// 임의 위치 색상 조회 (fg에 없는 좌표도 가능)
-export function colorAt(x: number, y: number): [number, number, number] {
-  return bilinearColor(x, y);
-}
 
 // sSensor 위쪽 반원
 export const sSensor1: Ssensor = { id: 1, angle: 0, distance: 0, dir: -1 };
@@ -105,7 +79,7 @@ export function initArduino() {
       const id = parseInt(match[1]);
       const angle = parseInt(match[2]);
       const distance = parseFloat(match[3]);
-      const newSSimg = initSsensorIMGpos(angle, distance, INITtime, id == 1 ? -1 : 1, sSensorUnits);
+      const newSSimg = initSsensorIMGpos(angle, distance, INITtime, id == 1 ? -1 : 1);
       if (newSSimg == null) return;
       if (id == 1) currentSsensor1IMG.push(newSSimg);
       else if (id == 2) currentSsensor2IMG.push(newSSimg);
@@ -126,14 +100,14 @@ export function randomizeSSensor() {
   const distance = TEST_STAGES[testStageIdx++ % TEST_STAGES.length];
 
   const angle1 = Math.floor(Math.random() * 181);
-  const img1 = initSsensorIMGpos(angle1, distance, INITtime, -1, sSensorUnits);
+  const img1 = initSsensorIMGpos(angle1, distance, INITtime, -1);
   if (img1) {
     currentSsensor1IMG.push(img1);
     updateSsensorAccumulate(sSensor1Accumulate, img1.pos[0], img1.pos[1], angle1, distance);
   }
 
   const angle2 = Math.floor(Math.random() * 181);
-  const img2 = initSsensorIMGpos(angle2, distance, INITtime, 1, sSensorUnits);
+  const img2 = initSsensorIMGpos(angle2, distance, INITtime, 1);
   if (img2) {
     currentSsensor2IMG.push(img2);
     updateSsensorAccumulate(sSensor2Accumulate, img2.pos[0], img2.pos[1], angle2, distance);
@@ -189,8 +163,8 @@ export function updateVsensorAccumulate(acc: Vaccumulate[], x: number, y: number
 }
 
 export function updateSsensorAccumulate(acc: Saccumulate[], x: number, y: number, angle: number, dist: number) {
-  const an = Math.round(angle / ANGLE_STEP) * ANGLE_STEP; // 0, 3, 6, ..., 180
-  const d = Math.floor(dist / CMtoPX); // 0, 1, 2, ... cell 인덱스
+  const an = Math.round(angle / ANGLE_STEP) * ANGLE_STEP;
+  const d = Math.floor(dist / CMtoPX);
   const found = acc.find((a) => a.angle === an && a.dist === d);
   if (found) {
     found.freq++;
@@ -199,6 +173,7 @@ export function updateSsensorAccumulate(acc: Saccumulate[], x: number, y: number
     acc.push({ pos: [x, y], angle: an, dist: d, freq: 1 });
   }
 }
+
 //이미지,tentacle 수명 업데이트(모든업데이트 여기서 함)
 let tickStarted = false;
 function startSensorTick() {

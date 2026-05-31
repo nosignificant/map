@@ -1,6 +1,5 @@
 import type p5 from "p5";
-import { Pos } from "../Util/types";
-import { ImgSet } from "../Util/edgeAndCorner";
+import { ImgSet } from "../Util/types";
 import { GRID, CANVAS, rows, cols } from "../Util/constant";
 import { dilate } from "../Util/edgeAndCorner";
 
@@ -49,16 +48,6 @@ export function drawOffsetOccupied(p: p5, src: boolean[][]) {
     }
   }
 }
-
-// draw small things
-export function drawTwoCircle(p: p5, pos: Pos, r: number) {
-  p.noFill();
-  p.stroke(255, 220, 0);
-  p.strokeWeight(1);
-  p.circle(pos.x, pos.y, r);
-  p.circle(pos.x, pos.y, r / 2);
-}
-
 export function drawCross(p: p5, x: number, y: number) {
   const startX = x - GRID / 4;
   const startY = y - GRID / 4;

@@ -32,17 +32,7 @@ export default function Home() {
           overflow: "hidden",
         }}
       >
-        <div style={{ ...miniScale(0.333), position: "absolute", top: 0, left: 0 }}>
-          <div style={{ ...overlayLayerStyle(1, 1200), pointerEvents: "none" }}>
-            <P5SketchLoader sketchName="main" />
-          </div>
-          <div style={overlayLayerStyle(2, 1200)}>
-            <P5SketchLoader sketchName="unit" />
-          </div>
-          <div style={overlayLayerStyle(3, 1200)}>
-            <P5SketchLoader sketchName="sonar" />
-          </div>
-        </div>
+        여기 출력될 거 넣으세요
       </div>
       <div className="flex flex-row gap-2">
         <div style={overlayLayerStyle(4, 1200)}>

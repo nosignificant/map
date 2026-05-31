@@ -24,6 +24,7 @@ export function initTentacle(vSensor: VSensor, length: number, partCount: number
     target: null,
     t: 0,
     switchT: 0,
+    switchInterval: 0,
     speed: Math.random() * 0.04 + 0.02,
     phase: Math.random() * Math.PI * 2,
     curveBias: (Math.random() - 0.5) * 60,
@@ -49,6 +50,7 @@ export function initStentacle(sIMGpos: SsensorImagePos, length: number, partCoun
     target: null,
     t: 0,
     switchT: 0,
+    switchInterval: 0,
     speed: Math.random() * 0.04 + 0.02,
     phase: Math.random() * Math.PI * 2,
     curveBias: (Math.random() - 0.5) * 60,
@@ -137,10 +139,15 @@ export function updateTentacle(vSensorAccumulate: Vaccumulate[], vSensor: VSenso
 
           t.target = [other.checkerGrid.pos[0] + x * GRID, other.checkerGrid.pos[1] + y * GRID];
 
-          if (isNewStim) t.t = a.freq * 10;
-
-          const switchCount = Math.max(1, Math.round(3 * (1 - ratio)));
-          t.switchT = t.t / switchCount;
+          // 새 자극일 때만 수명 + 전환 간격(고정) 계산
+          if (isNewStim) {
+            if (a.freq > 100) t.t = a.freq * 100;
+            t.t = a.freq * 3;
+            const switchCount = Math.max(1, Math.round(10 * (1 - ratio)));
+            t.switchInterval = t.t / switchCount;
+          }
+          // 전환할 때마다 고정 간격으로 재충전 (줄어든 t.t로 안 나눔)
+          t.switchT = t.switchInterval;
         }
       }
     }
@@ -176,7 +183,6 @@ export function drawFABRIK(p: p5, t: Tentacle, acc?: Vaccumulate) {
   ];
 
   const lineWeight = 7;
-  const pointSize = 20;
 
   p.strokeWeight(lineWeight);
   p.stroke(currentColor);
@@ -206,4 +212,27 @@ export function tenOccupied(fg: CheckerGrid[], vSensor: VSensor[]): [number, num
     if (t.target) occupied.push(snapToCheck(t.target, fg));
   }
   return occupied;
+}
+
+// 촉수 1개 생성 (startPos 기준)
+export function makeTentacle(startPos: [number, number], length: number, partCount: number): Tentacle {
+  const defaultPos: [number, number] = [startPos[0] + length, startPos[1]];
+  const parts: [number, number][] = [];
+  for (let j = 0; j < partCount; j++) {
+    const t = j / (partCount - 1);
+    parts.push([startPos[0] + (defaultPos[0] - startPos[0]) * t, startPos[1] + (defaultPos[1] - startPos[1]) * t]);
+  }
+  return {
+    startPos,
+    defaultLength: length,
+    defaultPos,
+    parts,
+    target: null,
+    t: 0,
+    switchT: 0,
+    switchInterval: 0,
+    speed: Math.random() * 0.04 + 0.02,
+    phase: Math.random() * Math.PI * 2,
+    curveBias: (Math.random() - 0.5) * 60,
+  };
 }

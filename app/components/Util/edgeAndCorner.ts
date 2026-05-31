@@ -15,25 +15,15 @@ function boolToCoords(map: boolean[][]): [number, number][] {
   return coords;
 }
 
-export function MakeImgSet(images: p5.Image[]): ImgSet[] {
-  const result: ImgSet[] = [];
-
-  images.forEach((img) => {
-    const edge = buildEdgeMap(img);
-    result.push({
-      img: img,
-      edgeResult: edge,
-    });
-  });
-
-  return result;
+export function MakeImgSet(p: p5, image: p5.Image): ImgSet {
+  return { img: image, edgeResult: buildEdgeMap(p, image) };
 }
 
 ////
 // edge
 ////
 
-export function buildEdgeMap(image: p5.Image): EdgeResult {
+export function buildEdgeMap(p: p5, image: p5.Image): EdgeResult {
   const g = p.createGraphics(DISPLAY_SIZE, DISPLAY_SIZE);
   g.pixelDensity(1);
   g.image(image, 0, 0, DISPLAY_SIZE, DISPLAY_SIZE);
@@ -72,12 +62,9 @@ export function buildEdgeMap(image: p5.Image): EdgeResult {
   g.remove();
 
   const closedEdge = dilate(drawnPixel);
-  const outlineMap = computeOffsetMap(closedEdge, drawnPixel);
 
-  // boolean 격자 → 좌표 배열로 변환해서 반환
   return {
-    drawn: boolToCoords(drawnPixel),
-    outline: boolToCoords(outlineMap),
+    drawn: boolToCoords(closedEdge),
   };
 }
 

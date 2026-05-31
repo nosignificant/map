@@ -26,11 +26,26 @@ export function SketchSonar(container: HTMLElement) {
       drawAccumCurve(p, sSensor2Accumulate);
 
       // 기존 sSensor 이미지
-      for (const img of currentSsensor1IMG) {
-        p.image(img.image, img.pos[0] - SONAR_IMG_SIZE / 2, img.pos[1] - SONAR_IMG_SIZE / 2, SONAR_IMG_SIZE, SONAR_IMG_SIZE);
+      for (const i of currentSsensor1IMG) {
+        for (const [ci, ri] of i.imgSet.edgeResult.drawn) {
+          const px = i.pos[0] + ci * 10;
+          const py = i.pos[1] + ri * 10; //imageStore쪽에 변수 있어!!
+          p.noStroke();
+          p.fill(249, 99, 28);
+          p.rect(px - 100, py - 100, 10, 10);
+        }
+
+        p.image(i.imgSet.img, i.pos[0] - SONAR_IMG_SIZE / 2, i.pos[1] - SONAR_IMG_SIZE / 2, SONAR_IMG_SIZE, SONAR_IMG_SIZE);
       }
-      for (const img of currentSsensor2IMG) {
-        p.image(img.image, img.pos[0] - SONAR_IMG_SIZE / 2, img.pos[1] - SONAR_IMG_SIZE / 2, SONAR_IMG_SIZE, SONAR_IMG_SIZE);
+      for (const i of currentSsensor2IMG) {
+        for (const [ci, ri] of i.imgSet.edgeResult.drawn) {
+          const px = i.pos[0] + ci * 10;
+          const py = i.pos[1] + ri * 10; //imageStore쪽에 변수 있어!!
+          p.noStroke();
+          p.fill(249, 99, 28);
+          p.rect(px - 100, py - 100, 10, 10);
+        }
+        p.image(i.imgSet.img, i.pos[0] - SONAR_IMG_SIZE / 2, i.pos[1] - SONAR_IMG_SIZE / 2, SONAR_IMG_SIZE, SONAR_IMG_SIZE);
       }
     };
   }, container);
@@ -68,67 +83,4 @@ function drawAccumCurve(p: p5, acc: Saccumulate[]) {
     });
   }
   if (groups.length < 2) return;
-
-  // 3) 대표점들을 bezier로 잇기
-  p.noFill();
-  p.stroke(255, 255, 255, 200);
-  p.strokeWeight(2);
-
-  for (let i = 0; i < groups.length - 1; i++) {
-    const a = groups[i];
-    const b = groups[i + 1];
-    const [x1, y1] = a.pos;
-    const [x2, y2] = b.pos;
-
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-    const len = Math.hypot(dx, dy);
-    if (len < 0.001) continue;
-    const perpX = -dy / len;
-    const perpY = dx / len;
-
-    // 두 그룹의 평균 freq → 휨 (최소 segment 길이의 30%, 더 커질수록 휨 증가)
-    const segFreq = (a.avgFreq + b.avgFreq) / 2;
-    const bulge = Math.max(len * 0.3, segFreq * 20);
-
-    const mx = (x1 + x2) / 2;
-    const my = (y1 + y2) / 2;
-    const cx = mx + perpX * bulge;
-    const cy = my + perpY * bulge;
-
-    if (!Number.isFinite(cx) || !Number.isFinite(cy)) continue;
-
-    // bezier 곡선 따라 이미지 stamp (회전 포함)
-    stampImagesOnCurve(p, x1, y1, cx, cy, x2, y2);
-  }
-}
-
-// quadratic bezier 곡선 따라 N개 이미지를 회전시켜 stamp
-function stampImagesOnCurve(p: p5, x1: number, y1: number, cx: number, cy: number, x2: number, y2: number) {
-  if (sSensorUnits.size === 0) return;
-  const imgs = Array.from(sSensorUnits.values());
-
-  for (let s = 0; s <= STAMP_PER_SEGMENT; s++) {
-    const t = s / STAMP_PER_SEGMENT;
-    const mt = 1 - t;
-
-    // bezier 위의 점 (quadratic)
-    const bx = mt * mt * x1 + 2 * mt * t * cx + t * t * x2;
-    const by = mt * mt * y1 + 2 * mt * t * cy + t * t * y2;
-
-    // 접선 (방향) — 회전용
-    const tanX = 2 * mt * (cx - x1) + 2 * t * (x2 - cx);
-    const tanY = 2 * mt * (cy - y1) + 2 * t * (y2 - cy);
-    const angle = Math.atan2(tanY, tanX);
-
-    // 이미지 선택 (순환)
-    const img = imgs[s % imgs.length];
-    if (!img) continue;
-
-    p.push();
-    p.translate(bx, by);
-    p.rotate(angle);
-    p.image(img, -STAMP_SIZE / 2, -STAMP_SIZE / 2, STAMP_SIZE, STAMP_SIZE);
-    p.pop();
-  }
 }

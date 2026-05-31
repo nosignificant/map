@@ -5,29 +5,7 @@ import { findPath } from "../Util/BFS";
 import { vSensorUnits } from "../Util/imageStore";
 import { updateHistoryArr } from "../SketchHistory";
 import { computePos4Shader } from "../Util/shaderUtil";
-import { colorAt } from "../Arduino";
-
-// 촉수 1개 생성 (startPos 기준)
-function makeTentacle(startPos: [number, number], length: number, partCount: number): Tentacle {
-  const defaultPos: [number, number] = [startPos[0] + length, startPos[1]];
-  const parts: [number, number][] = [];
-  for (let j = 0; j < partCount; j++) {
-    const t = j / (partCount - 1);
-    parts.push([startPos[0] + (defaultPos[0] - startPos[0]) * t, startPos[1] + (defaultPos[1] - startPos[1]) * t]);
-  }
-  return {
-    startPos,
-    defaultLength: length,
-    defaultPos,
-    parts,
-    target: null,
-    t: 0,
-    switchT: 0,
-    speed: Math.random() * 0.04 + 0.02,
-    phase: Math.random() * Math.PI * 2,
-    curveBias: (Math.random() - 0.5) * 60,
-  };
-}
+import { makeTentacle } from "../drawings/tentacles";
 
 export function initVSensor(checker: CheckerGrid[]): VSensor[] {
   const result: VSensor[] = [];
