@@ -1,11 +1,12 @@
 import type p5 from "p5";
 import { CheckerGrid, VSensor, VsensorImagePos, Connect, Tentacle } from "../Util/types";
-import { GRID, TIME, TRAIL_SPEED, STEP_OFFSETS } from "../Util/constant";
+import { GRID, TIME, TRAIL_SPEED, STEP_OFFSETS, CANVAS } from "../Util/constant";
 import { findPath } from "../Util/BFS";
 import { vSensorUnits } from "../Util/imageStore";
 import { updateHistoryArr } from "../SketchHistory";
 import { computePos4Shader } from "../Util/shaderUtil";
 import { makeTentacle } from "../drawings/tentacles";
+import { drawX } from "../drawings/draw";
 
 export function initVSensor(checker: CheckerGrid[]): VSensor[] {
   const result: VSensor[] = [];
@@ -27,7 +28,7 @@ export function initVSensor(checker: CheckerGrid[]): VSensor[] {
         near: [],
         clickCount: 0,
         connect: [],
-        tentacle: makeTentacle(pos, 100, 6),
+        tentacle: makeTentacle(pos, 100, 6, 20),
         strength: 0,
         currentStage: 0,
       });
@@ -60,7 +61,7 @@ export function snapToSensor(p: p5, src: VSensor[]): VSensor {
     near: [],
     clickCount: 0,
     connect: [],
-    tentacle: makeTentacle([0, 0], 100, 6),
+    tentacle: makeTentacle([0, 0], 100, 6, 20),
     strength: 0,
     currentStage: 0,
   };
@@ -158,18 +159,20 @@ export function drawConnection(p: p5, vSensor: VSensor[]) {
       const drawCount = Math.floor(c.t / TIME);
       const cur = Math.max(0, Math.min(drawCount, c.path.length - 1));
       p.strokeCap(p.SQUARE);
-      //const currentPathOcc = c.path.slice(0, cur + 1);
-      //const [hx, hy] = c.path[cur];
-      //drawUpAndDown(p, hx, hy, currentPathOcc, c.alt);
-      p.stroke(89, 0, 255);
-      p.strokeWeight(GRID);
 
-      for (let j = 0; j < cur; j++) {
-        const [x1, y1] = computePos4Shader(c.path[j]);
-        const [x2, y2] = computePos4Shader(c.path[j + 1]);
-        const avgX = (x1 + x2) / 2;
-        const avgY = (y1 + y2) / 2;
-        p.line(avgX - GRID / 2, avgY - GRID / 2, avgX + GRID / 2, avgY + GRID / 2);
+      const currentPathOcc = c.path.slice(0, cur + 1);
+      const [hx, hy] = c.path[cur];
+      drawUpAndDown(p, hx, hy, currentPathOcc, c.alt);
+
+      for (let j = 0; j <= cur; j++) {
+        const [x, y] = computePos4Shader(c.path[j]);
+        p.noStroke();
+        p.fill(0);
+        p.circle(x, y, GRID * 0.7);
+
+        p.stroke(255);
+        p.strokeWeight(2);
+        drawX(p, x, y);
       }
     }
   }
@@ -178,7 +181,7 @@ export function drawConnection(p: p5, vSensor: VSensor[]) {
 export function drawUpAndDown(p: p5, hx: number, hy: number, currentPathOcc: [number, number][], alt: boolean) {
   const half = CANVAS / 2;
   p.strokeWeight(GRID - 2);
-  const [r, g, b] = [199, 255, 86]; // 빨강 (좌상단)
+  const [r, g, b] = [199, 255, 86];
 
   //const horizColor: [number, number, number] = alt ? [0, 0, 255] : [255, 0, 0];
   //const vertColor: [number, number, number] = alt ? [255, 0, 0] : [0, 0, 255];

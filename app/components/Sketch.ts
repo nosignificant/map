@@ -45,7 +45,7 @@ export function Sketch(container: HTMLElement) {
       sketchShader.setUniform("uTenOccupied", tenFlat.slice(0, 400));
       sketchShader.setUniform("uTenCount", Math.min(tenUnique.length, 200));
       p.noStroke();
-      p.rect(-CANVAS / 2, -CANVAS / 2, CANVAS, CANVAS);
+      //p.rect(-CANVAS / 2, -CANVAS / 2, CANVAS, CANVAS);
       p.resetShader();
 
       // 3) 촉수 (vSensor당 1개)

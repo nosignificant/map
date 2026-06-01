@@ -1,5 +1,6 @@
 import P5SketchLoader from "./components/P5SketchLoader";
 import PrintDownloader from "./components/PrintDownloader";
+import PrintComposite from "./components/PrintComposite";
 import "./globals.css";
 
 export default function Home() {
@@ -7,34 +8,43 @@ export default function Home() {
     <div className="flex flex-row flex-1 items-center justify-center font-sans py-16 gap-8">
       {/* 메인 무대 — 1200×1200에 모든 레이어 겹침 (조작용) */}
       <div style={mainStageStyle(1200)}>
-        {/* 파티클 (임시로 맨 앞 — 보이는지 확인용) */}
-        <div style={overlayLayerStyle(10, 1200)}>
-          <P5SketchLoader sketchName="particles" />
-        </div>
         <div style={overlayLayerStyle(1, 1200, true)}>
           <P5SketchLoader sketchName="main" />
         </div>
         <div style={overlayLayerStyle(2, 1200)}>
-          <P5SketchLoader sketchName="unit" />
+          <P5SketchLoader sketchName="sonar" />
         </div>
         <div style={overlayLayerStyle(3, 1200)}>
-          <P5SketchLoader sketchName="sonar" />
+          <P5SketchLoader sketchName="unit" />
         </div>
       </div>
       <div style={overlayLayerStyle(4, 1200)}>
         <P5SketchLoader sketchName="history" />
       </div>
 
-      {/* 출력용 궤적 스케치 (Enter 누르면 이것만 PNG로 다운로드) */}
-      <div className="borderWhite" style={printPreviewStyle(600)}>
-        <div className="print-source" style={miniScale(0.5)}>
-          <P5SketchLoader sketchName="print" />
-        </div>
+      {/* 캡처용 print 캔버스 — 화면 밖에 숨김 (Enter 시 이걸 저장) */}
+      <div className="print-source" style={offscreenStyle}>
+        <P5SketchLoader sketchName="print" />
       </div>
-      <PrintDownloader targetSelector=".print-source" />
+      <PrintDownloader />
+
+      {/* 합성: 오래된 trail(파랑) + 현재 trail(검정) 겹침 — Enter 시 이게 프린트됨 */}
+      <div className="borderWhite" style={printPreviewStyle(600)}>
+        <PrintComposite display={600} />
+      </div>
     </div>
   );
 }
+
+// 캡처용 — 화면 밖에 두되 렌더는 됨
+const offscreenStyle: React.CSSProperties = {
+  position: "absolute",
+  left: -99999,
+  top: 0,
+  width: 1200,
+  height: 1200,
+  pointerEvents: "none",
+};
 
 // 출력 미리보기 — 흰 배경 + 1200 캔버스를 박스 안으로 잘라넣음
 function printPreviewStyle(size: number): React.CSSProperties {

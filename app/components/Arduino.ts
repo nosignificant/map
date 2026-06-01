@@ -3,8 +3,7 @@ import { initVSensor } from "./sensors/vSensor";
 import { fullGrid } from "./drawings/checkerboard";
 import { INITtime, TIME, CANVAS } from "./Util/constant";
 import { initSsensor, updateSSensorImage, CMtoPX, ANGLE_STEP } from "./sensors/sSensor";
-import { tenOccupied, updateTtentacle, syncAccumulateLastFreq, updateStentacle } from "./drawings/tentacles";
-import { initParticles, updateParticles } from "./particles";
+import { tenOccupied, updateTtentacle, syncAccumulateLastFreq } from "./drawings/tentacles";
 
 export const fg = fullGrid();
 export const vSensor: VSensor[] = initVSensor(fg);
@@ -191,13 +190,9 @@ function startSensorTick() {
     tOccupied.length = 0;
     tOccupied.push(...newOcc);
 
-    //t 확인하고 0 되면 제거
-    updateSSensorImage(sSensor1Accumulate, Ssensor1, TIME);
-    updateSSensorImage(sSensor2Accumulate, Ssensor2, TIME);
-
-    // sSensor 발 target 설정 (없으면 drawFABRIK이 안 그림)
-    updateStentacle(Ssensor1, fg);
-    updateStentacle(Ssensor2, fg);
+    //t 확인하고 0 되면 발 떼고 정착 배열로 이전 (발 딛기는 이동량 기반으로 내부 처리)
+    updateSSensorImage(sSensor1Accumulate, Ssensor1, fg, TIME);
+    updateSSensorImage(sSensor2Accumulate, Ssensor2, fg, TIME);
 
     // 모든 vSensor 처리 후 1번만 — 다음 프레임 비교 기준 갱신
     syncAccumulateLastFreq(vSensorAccumulate);

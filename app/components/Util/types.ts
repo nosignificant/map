@@ -23,6 +23,7 @@ export type Ssensor = {
   tentacles: Tentacle[];
   t: number;
   settle: boolean;
+  band: { min: number; max: number }; // 거리대(cm) — 이동을 이 범위 반지름으로 제한
 };
 
 export type ImgSet = { img: p5.Image; edgeResult: EdgeResult };

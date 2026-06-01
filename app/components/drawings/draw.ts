@@ -32,3 +32,10 @@ export function drawCross(p: p5, x: number, y: number) {
   p.line(startX, y, startX + GRID / 2, y);
   p.line(x, startY, x, startY + GRID / 2);
 }
+
+// × 표 (45도 돌린 십자) — connection 전용
+export function drawX(p: p5, x: number, y: number) {
+  const h = GRID / 4;
+  p.line(x - h, y - h, x + h, y + h); // ↘
+  p.line(x - h, y + h, x + h, y - h); // ↗
+}

@@ -1,6 +1,6 @@
-import { ImgSet, Saccumulate, Ssensor, Tentacle } from "../Util/types";
+import { ImgSet, Saccumulate, Ssensor, Tentacle, CheckerGrid } from "../Util/types";
 import { GRID } from "../Util/constant";
-import { makeTentacle, sTentacleAlert } from "../drawings/tentacles";
+import { makeTentacle, sTentacleAlert, stepStentacle } from "../drawings/tentacles";
 import { sSensorImgSets } from "../Util/imageStore";
 
 export const ANGLE_STEP = 3;
@@ -16,20 +16,21 @@ function pad2(n: number): string {
 }
 
 const MAX_IMAGES = 60; // 안전 상한: 화면당 이미지 최대 개수
-const TRAIL_GAP = 8; // 궤적 점 간 최소 거리(px)
-const TRAIL_MAX = 400; // 궤적 점 최대 개수 (상한, 전체 공유)
+const ALERT_GAP = 50; // 이미지가 이만큼 움직이면 발 뿌리 따라옴(px)
+const TRAIL_GAP = 30; // 궤적 점 간 최소 거리(px)
+const TRAIL_MAX = 4000; // 궤적 점 최대 개수 (상한, 전체 공유) — 오래 남김
 
-// sSensor 전체 공유 궤적 — 이미지가 사라져도 유지됨
-export const sTrail: [number, number][] = [];
+// sSensor 전체 공유 궤적 — 이미지가 사라져도 유지됨 (이미지로 그림)
+export const sTrail: { pos: [number, number]; imgSet: ImgSet }[] = [];
 
-function pushTrail(pos: [number, number]) {
+function pushTrail(pos: [number, number], imgSet: ImgSet) {
   const last = sTrail[sTrail.length - 1];
-  if (last && Math.hypot(pos[0] - last[0], pos[1] - last[1]) <= TRAIL_GAP) return;
-  sTrail.push([pos[0], pos[1]]);
+  if (last && Math.hypot(pos[0] - last.pos[0], pos[1] - last.pos[1]) <= TRAIL_GAP) return;
+  sTrail.push({ pos: [pos[0], pos[1]], imgSet });
   if (sTrail.length > TRAIL_MAX) sTrail.shift();
 }
 
-export function updateSSensorImage(sacc: Saccumulate[], sSensor: Ssensor[], TIME: number) {
+export function updateSSensorImage(sacc: Saccumulate[], sSensor: Ssensor[], fg: CheckerGrid[], TIME: number) {
   // 상한 넘으면 가장 오래된 것부터 제거 (메모리 안전망)
   while (sSensor.length > MAX_IMAGES) sSensor.shift();
 
@@ -38,52 +39,83 @@ export function updateSSensorImage(sacc: Saccumulate[], sSensor: Ssensor[], TIME
 
     const next = calculateNextPos(sacc, s);
     if (next) {
-      s.pos[0] += (next[0] - s.pos[0]) * 0.1; // lerp
-      s.pos[1] += (next[1] - s.pos[1]) * 0.1;
+      s.pos[0] += (next[0] - s.pos[0]) * 0.01; // lerp
+      s.pos[1] += (next[1] - s.pos[1]) * 0.01;
+
+      // 반지름을 자기 band(거리대) 안으로 제한 — 각도는 자유, 거리만 묶음
+      const r = Math.hypot(s.pos[0], s.pos[1]) || 1;
+      const rCm = (r / PX_PER_CELL) * CMtoPX;
+      const clampedCm = Math.min(Math.max(rCm, s.band.min), s.band.max);
+      if (clampedCm !== rCm) {
+        const k = ((clampedCm / CMtoPX) * PX_PER_CELL) / r;
+        s.pos[0] *= k;
+        s.pos[1] *= k;
+      }
+
       s.angle = (Math.atan2(s.pos[1], s.pos[0]) * 180) / Math.PI;
     }
 
     // 궤적 기록 — 전체 공유 배열에 (이미지 사라져도 유지)
-    pushTrail(s.pos);
+    pushTrail(s.pos, s.imgSet);
 
-    // 발 뿌리를 이미지 현재 위치로 따라오게
-    sTentacleAlert(s.pos, s.tentacles);
+    // sSensor가 일정 거리(ALERT_GAP) 이상 움직였을 때만 발 뿌리 이동 + 새 위치 딛기
+    const root = s.tentacles[0]?.startPos;
+    const noTarget = s.tentacles[0]?.target == null; // 첫 생성 직후엔 한 번 딛게
+    if (!root || noTarget || Math.hypot(s.pos[0] - root[0], s.pos[1] - root[1]) > ALERT_GAP) {
+      sTentacleAlert(s.pos, s.tentacles); // 뿌리 이동
+      stepStentacle(s, fg); // 발끝 새로 딛기
+    }
 
     s.t -= TIME;
-    if (s.t <= 0) sSensor.splice(i, 1);
+    if (s.t <= 0) {
+      // 발/이미지 제거 — 자취는 sTrail이 오래 남김
+      sSensor.splice(i, 1);
+    }
   }
 }
 
-function calculateNextPos(Sacc: Saccumulate[], sSensor: Ssensor): [number, number] | null {
-  // 현재 각도 freq
-  const current = Sacc.find((s) => Math.abs(s.angle - sSensor.angle) < ANGLE_STEP);
-  const currentFreq = current?.freq ?? 0;
+const STEP_DEG = 30; // 한 번에 좌/우로 도는 각도
+const WANDER = 30; // 랜덤 흔들림
+const RADIAL = 120; // 안/바깥(반지름 방향) 랜덤 폭
 
-  let totalX = 0;
-  let totalY = 0;
-  let totalFreq = 0;
-  let count = 0;
+// 가장 가까운 accumulate의 freq (없으면 0)
+function freqAtPos(Sacc: Saccumulate[], pos: [number, number]): number {
+  let best = 0;
+  let bestD = Infinity;
   for (const s of Sacc) {
-    if (Math.abs(s.angle - sSensor.angle) > 30) continue;
-    totalX += s.pos[0];
-    totalY += s.pos[1];
-    totalFreq += s.freq;
-    count++;
+    const d = Math.hypot(pos[0] - s.pos[0], pos[1] - s.pos[1]);
+    if (d < bestD) {
+      bestD = d;
+      best = s.freq;
+    }
   }
-  const WANDER = 60; // 랜덤 떠돌기 크기
-  const wander = (): [number, number] => [sSensor.pos[0] + (Math.random() - 0.5) * WANDER, sSensor.pos[1] + (Math.random() - 0.5) * WANDER];
+  return best;
+}
 
-  // 주변에 누적 데이터 없으면 사방으로 랜덤 워크
-  if (count === 0) return wander();
+// 현재 위치를 중심 기준 a(rad)만큼 회전 (반지름 유지)
+function rotate(pos: [number, number], a: number): [number, number] {
+  return [pos[0] * Math.cos(a) - pos[1] * Math.sin(a), pos[0] * Math.sin(a) + pos[1] * Math.cos(a)];
+}
 
-  const avgFreq = totalFreq / count;
-  const prob = (avgFreq - currentFreq) / avgFreq;
+function calculateNextPos(Sacc: Saccumulate[], sSensor: Ssensor): [number, number] | null {
+  const step = (STEP_DEG * Math.PI) / 180;
+  const currentFreq = freqAtPos(Sacc, sSensor.pos);
 
-  // freq 높은 쪽으로 끌릴지 결정 — 실패해도 멈추지 말고 랜덤 워크
-  if (Math.random() > prob) return wander();
+  // 좌 또는 우 30° 회전
+  const dir = Math.random() < 0.5 ? 1 : -1;
+  let target = rotate(sSensor.pos, dir * step);
 
-  // 가중 평균 쪽으로 가되 큰 랜덤 흔들림 추가
-  return [totalX / count + (Math.random() - 0.5) * WANDER, totalY / count + (Math.random() - 0.5) * WANDER];
+  // 그쪽 freq가 이전보다 낮으면 반대로 돌기
+  if (freqAtPos(Sacc, target) < currentFreq) {
+    target = rotate(sSensor.pos, -dir * step);
+  }
+
+  // 안/바깥(반지름 방향) 랜덤 — band-clamp가 범위 잡아줌
+  const r = Math.hypot(target[0], target[1]) || 1;
+  const radial = (Math.random() - 0.5) * RADIAL;
+  target = [target[0] + (target[0] / r) * radial, target[1] + (target[1] / r) * radial];
+
+  return [target[0] + (Math.random() - 0.5) * WANDER, target[1] + (Math.random() - 0.5) * WANDER];
 }
 
 export function initSsensor(angle: number, distance: number, time: number, dir: -1 | 1): Ssensor | null {
@@ -94,15 +126,33 @@ export function initSsensor(angle: number, distance: number, time: number, dir: 
   const imgSet = getSSensorImgSet(snapAngle, distance, sSensorImgSets); // 캐시에서 꺼냄
   if (!imgSet) return null;
 
+  const band = getBand(distance);
+  if (!band) return null;
+
   const rad = (angle * Math.PI) / 180;
   const radius = (distance / CMtoPX) * PX_PER_CELL;
   const x = Math.floor(-Math.cos(rad) * radius);
   const y = Math.floor(dir * Math.sin(rad) * radius);
   const tens: Tentacle[] = [];
   for (let i = 0; i < 3; i++) {
-    tens.push(makeTentacle([x, y], 100, 4));
+    tens.push(makeTentacle([x, y], 150, 8, 70));
   }
-  return { pos: [x, y], angle: angle, tentacles: tens, imgSet: imgSet, t: time, settle: false };
+  return { pos: [x, y], angle: angle, tentacles: tens, imgSet: imgSet, t: time, settle: false, band };
+}
+
+// 거리대(band) 정의 — min/max(cm)와 band 이름
+export const BANDS = [
+  { name: "a", min: 405, max: 600 },
+  { name: "b", min: 210, max: 404 },
+  { name: "c", min: 15, max: 209 },
+];
+
+// 거리(cm) → 해당 band (없으면 null)
+export function getBand(distance: number): { min: number; max: number } | null {
+  for (const b of BANDS) {
+    if (distance >= b.min && distance <= b.max) return { min: b.min, max: b.max };
+  }
+  return null;
 }
 
 function randomUnit(sUnits: Map<string, ImgSet>, folder: string, prefix: string, count: number): ImgSet | null {

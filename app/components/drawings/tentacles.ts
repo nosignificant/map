@@ -1,63 +1,11 @@
 import p5 from "p5";
 import { Tentacle, VSensor, CheckerGrid, Vaccumulate, Ssensor, Accumulate, ImgSet } from "../Util/types";
 import { snapToCheck } from "./checkerboard";
-import { STEP_OFFSETS, GRID, TIME } from "../Util/constant";
+import { STEP_OFFSETS, GRID, TIME, CANVAS } from "../Util/constant";
 import { computePos4Shader } from "../Util/shaderUtil";
 import { drawCross } from "./draw";
 import { updateConnection } from "../sensors/vSensor";
 import { reportVten, reportSten } from "../forPrint";
-
-export function initTentacle(vSensor: VSensor, length: number, partCount: number): Tentacle {
-  const angle = 0;
-  const startPos = vSensor.checkerGrid.pos;
-  const defaultPos: [number, number] = [startPos[0] + Math.cos(angle) * length, startPos[1] + Math.sin(angle) * length];
-
-  const parts: [number, number][] = [];
-  for (let j = 0; j < partCount; j++) {
-    const t = j / (partCount - 1);
-    parts.push([startPos[0] + (defaultPos[0] - startPos[0]) * t, startPos[1] + (defaultPos[1] - startPos[1]) * t]);
-  }
-
-  return {
-    startPos,
-    defaultLength: length,
-    defaultPos,
-    parts,
-    target: null,
-    t: 0,
-    switchT: 0,
-    switchInterval: 0,
-    speed: Math.random() * 0.04 + 0.02,
-    phase: Math.random() * Math.PI * 2,
-    curveBias: (Math.random() - 0.5) * 60,
-  };
-}
-
-export function initStentacle(sIMGpos: Ssensor, length: number, partCount: number): Tentacle {
-  const angle = 0;
-  const startPos = sIMGpos.pos;
-  const defaultPos: [number, number] = [startPos[0] + Math.cos(angle) * length, startPos[1] + Math.sin(angle) * length];
-
-  const parts: [number, number][] = [];
-  for (let j = 0; j < partCount; j++) {
-    const t = j / (partCount - 1);
-    parts.push([startPos[0] + (defaultPos[0] - startPos[0]) * t, startPos[1] + (defaultPos[1] - startPos[1]) * t]);
-  }
-
-  return {
-    startPos,
-    defaultLength: length,
-    defaultPos,
-    parts,
-    target: null,
-    t: 0,
-    switchT: 0,
-    switchInterval: 0,
-    speed: Math.random() * 0.04 + 0.02,
-    phase: Math.random() * Math.PI * 2,
-    curveBias: (Math.random() - 0.5) * 60,
-  };
-}
 
 export function FABRIK(p: p5, t: Tentacle): [number, number][] {
   if (t.target == null) return [];
@@ -185,28 +133,25 @@ export function syncAccumulateLastFreq(vSensorAccumulate: Vaccumulate[]) {
   }
 }
 
-export function updateStentacle(sSensor: Ssensor[], fg: CheckerGrid[]) {
-  for (const s of sSensor) {
-    for (const t of s.tentacles) {
-      t.t -= TIME;
-      if (t.t > 0) continue;
-
-      // 근처 fg 후보
-      const candidates: CheckerGrid[] = [];
-      for (const g of fg) {
-        const [gx, gy] = g.pos;
-        const [tx, ty] = t.startPos;
-        const d = Math.hypot(tx - gx, ty - gy);
-        if (d <= t.defaultLength * 1) candidates.push(g);
-      }
-      if (candidates.length === 0) continue; // 없으면 스킵
-
-      // 랜덤 하나 디디기
-      const r = Math.floor(Math.random() * candidates.length);
-      t.target = [candidates[r].pos[0], candidates[r].pos[1]];
-      reportSten(t.target[0], t.target[1]); // sSensor 발 궤적 기록 (상한 15개)
-      t.t = 5;
+// sSensor 한 개의 발들이 새 위치를 딛음 (sSensor가 일정 거리 이상 움직였을 때 호출)
+export function stepStentacle(s: Ssensor, fg: CheckerGrid[]) {
+  for (const t of s.tentacles) {
+    // 근처 fg 후보 — sSensor는 center-origin이라 fg(top-left)를 center로 변환해 비교
+    const [tx, ty] = t.startPos;
+    const candidates: CheckerGrid[] = [];
+    for (const g of fg) {
+      const gx = g.pos[0] - CANVAS / 2;
+      const gy = g.pos[1] - CANVAS / 2;
+      const d = Math.hypot(tx - gx, ty - gy);
+      if (d <= t.defaultLength) candidates.push(g);
     }
+    if (candidates.length === 0) continue; // 없으면 스킵
+
+    // 랜덤 하나 디디기 — target은 center-origin (sonar는 translate로 그림)
+    const r = Math.floor(Math.random() * candidates.length);
+    const g = candidates[r];
+    t.target = [g.pos[0] - CANVAS / 2, g.pos[1] - CANVAS / 2];
+    reportSten(g.pos[0], g.pos[1]); // 궤적은 top-left로 기록 (print용)
   }
 }
 
@@ -228,8 +173,8 @@ export function drawFABRIK(p: p5, t: Tentacle, acc?: Vaccumulate, useShaderPos =
   const freq = acc?.lastFreq ?? acc?.freq ?? 0;
   const prob = Math.min(freq / 50, 1);
 
-  let lineWeight = 4;
-  let currentColor = [85, 150, 188];
+  let lineWeight = 3;
+  let currentColor = [255, 255, 255];
   if (acc) {
     lineWeight = 7;
     currentColor = [
@@ -276,8 +221,7 @@ export function tenOccupied(fg: CheckerGrid[], vSensor: VSensor[]): [number, num
   return occupied;
 }
 
-// 촉수 1개 생성 (startPos 기준)
-export function makeTentacle(startPos: [number, number], length: number, partCount: number): Tentacle {
+export function makeTentacle(startPos: [number, number], length: number, partCount: number, curvedBias: number): Tentacle {
   const defaultPos: [number, number] = [startPos[0] + length, startPos[1]];
   const parts: [number, number][] = [];
   for (let j = 0; j < partCount; j++) {
@@ -295,7 +239,7 @@ export function makeTentacle(startPos: [number, number], length: number, partCou
     switchInterval: 0,
     speed: Math.random() * 0.04 + 0.02,
     phase: Math.random() * Math.PI * 2,
-    curveBias: (Math.random() - 0.5) * 60,
+    curveBias: (Math.random() - 0.5) * curvedBias,
   };
 }
 

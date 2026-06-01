@@ -1,33 +1,38 @@
 "use client";
 import { useEffect } from "react";
 
-export default function PrintDownloader({ targetSelector = ".print-source" }: { targetSelector?: string }) {
+export default function PrintDownloader() {
   useEffect(() => {
     function handler(e: KeyboardEvent) {
-      if (e.key === "Enter") downloadPrintImage(targetSelector);
+      if (e.key === "Enter") doPrint();
     }
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [targetSelector]);
+  }, []);
 
   return null;
 }
 
-function downloadPrintImage(selector: string) {
-  const stage = document.querySelector(selector);
-  const canvas = stage?.querySelector("canvas") as HTMLCanvasElement | null;
-  if (!canvas) {
-    console.warn("[PrintDownloader] canvas not found:", selector);
-    return;
+function doPrint() {
+  // 현재(검정) trail — 저장용 (다음엔 파랑 old가 됨)
+  const live = document.querySelector(".print-source canvas") as HTMLCanvasElement | null;
+  // 합성본(파랑 old + 검정 현재) — 다운로드용
+  const composite = document.querySelector(".print-composite") as HTMLCanvasElement | null;
+
+  if (live) {
+    fetch("/api/print-image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dataUrl: live.toDataURL("image/png") }),
+    }).catch((e) => console.warn("[print 저장 실패]", e));
   }
 
-  canvas.toBlob((blob) => {
-    if (!blob) return;
-    const url = URL.createObjectURL(blob);
+  // 다운로드는 합성본 (없으면 현재본)
+  const out = composite ?? live;
+  if (out) {
     const a = document.createElement("a");
-    a.href = url;
+    a.href = out.toDataURL("image/png");
     a.download = `print-${Date.now()}.png`;
     a.click();
-    URL.revokeObjectURL(url);
-  }, "image/png");
+  }
 }
