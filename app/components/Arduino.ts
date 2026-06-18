@@ -1,28 +1,19 @@
 import { VSensor, Ssensor, Vaccumulate, Saccumulate, Accumulate } from "./Util/types";
-import { initVSensor } from "./sensors/vSensor";
-import { fullGrid } from "./drawings/checkerboard";
-import { INITtime, TIME, CANVAS } from "./Util/constant";
-import { initSsensor, updateSSensorImage, CMtoPX, ANGLE_STEP } from "./sensors/sSensor";
-import { tenOccupied, updateTtentacle, syncAccumulateLastFreq } from "./drawings/tentacles";
+import { initVSensor, updateVsensor, syncAccumulateLastFreq, applyStrength } from "./sensors/vSensor";
+import { fullGrid, fineGrid } from "./drawings/checkerboard";
+import { TIME, CANVAS } from "./Util/constant";
+import { initSsensorSet, updateSlot, updateSSensor, SLOT_DEG } from "./sensors/sSensor";
+import { updateBoids, createBoids } from "./boids";
+import { initBoidSound, updateBoidSound, onTouch } from "./audio/boidSound";
+import { updateGridSparks } from "./gridSparks";
 
 export const fg = fullGrid();
+export const fineFg = fineGrid(); // connection·boid 링크용 (GRID/2)
 export const vSensor: VSensor[] = initVSensor(fg);
 
-// 매 tick에서 갱신되는 씬 데이터 (Sketch에서 import해서 그대로 사용)
-export const tOccupied: [number, number][] = [];
-
-// 셰이더용 센서 위치 배열 (50개로 패딩)
-export const sensorPos: number[] = [];
-for (const v of vSensor) {
-  sensorPos.push(v.checkerGrid.pos[0], v.checkerGrid.pos[1]);
-}
-while (sensorPos.length < 50) sensorPos.push(0);
-
-// sSensor 위쪽 반원
-export const Ssensor1: Ssensor[] = [];
-
-// sSensor 아래쪽 반원
-export const Ssensor2: Ssensor[] = [];
+// sSensor 고정 슬롯 — 위(-1)/아래(+1) 각 6개
+export const Ssensor1: Ssensor[] = initSsensorSet(-1);
+export const Ssensor2: Ssensor[] = initSsensorSet(1);
 
 //accumulate
 export const vSensorAccumulate: Vaccumulate[] = [];
@@ -54,20 +45,32 @@ export function initArduino() {
   socket.onmessage = (event) => {
     const raw = event.data.trim();
 
-    //진동센서
+    // 버튼 누르면 print 출력 트리거
+    if (raw === "button:click") {
+      window.dispatchEvent(new Event("print-trigger"));
+      return;
+    }
+
+    // 터치센서 — 누르는 동안 0.2초마다 들어옴 → 드론 피치 상승
+    if (raw.startsWith("touch:")) {
+      const n = parseInt(raw.split(":")[1]);
+      if (!isNaN(n)) onTouch(n);
+      return;
+    }
+
+    //진동센서 — 이름으로 매칭 (예: "piezo1-A0:512")
     if (raw.startsWith("piezo")) {
       const parts = raw.split(":");
-      const sensorId = parseInt(parts[0].replace("piezo", ""));
+      const name = parts[0].replace("piezo", ""); // "1-A0"
       const val = parseInt(parts[1]);
-      if (vSensor?.[sensorId]) {
-        const [x, y] = vSensor[sensorId].checkerGrid.pos;
-        console.log(`[piezo${sensorId + 1}] val=${val} → vSensor[${sensorId}] pos=(${x}, ${y})`);
-
-        //신호가 약해서 * 5를 했음
-        vSensor[sensorId].strength = val;
-
-        //개수 증가
+      const sensor = vSensor.find((v) => v.name === name);
+      if (sensor) {
+        const [x, y] = sensor.checkerGrid.pos;
+        console.log(`[piezo ${name}] val=${val} → pos=(${x}, ${y})`);
         updateVsensorAccumulate(vSensorAccumulate, x, y);
+
+        // 강한 신호만 strength·stage·t 갱신
+        applyStrength(sensor, val * 5);
       }
       return;
     }
@@ -77,13 +80,12 @@ export function initArduino() {
       const id = parseInt(match[1]);
       const angle = parseInt(match[2]);
       const distance = parseFloat(match[3]);
-      const newSSimg = initSsensor(angle, distance, INITtime, id == 1 ? -1 : 1);
-      if (newSSimg == null) return;
-      if (id == 1) Ssensor1.push(newSSimg);
-      else if (id == 2) Ssensor2.push(newSSimg);
 
-      //개수 증가 — angle, distance 원본값 전달
-      updateSsensorAccumulate(id == 1 ? sSensor1Accumulate : sSensor2Accumulate, newSSimg.pos[0], newSSimg.pos[1], angle);
+      // 고정 슬롯의 거리만 갱신
+      const slot = updateSlot(id == 1 ? Ssensor1 : Ssensor2, angle, distance);
+      if (slot) {
+        updateSsensorAccumulate(id == 1 ? sSensor1Accumulate : sSensor2Accumulate, slot.targetPos[0], slot.targetPos[1], angle, distance);
+      }
     }
   };
 
@@ -98,18 +100,12 @@ export function randomizeSSensor() {
   const distance = TEST_STAGES[testStageIdx++ % TEST_STAGES.length];
 
   const angle1 = Math.floor(Math.random() * 181);
-  const img1 = initSsensor(angle1, distance, INITtime, -1);
-  if (img1) {
-    Ssensor1.push(img1);
-    updateSsensorAccumulate(sSensor1Accumulate, img1.pos[0], img1.pos[1], angle1);
-  }
+  const s1 = updateSlot(Ssensor1, angle1, distance);
+  if (s1) updateSsensorAccumulate(sSensor1Accumulate, s1.targetPos[0], s1.targetPos[1], angle1, distance);
 
   const angle2 = Math.floor(Math.random() * 181);
-  const img2 = initSsensor(angle2, distance, INITtime, 1);
-  if (img2) {
-    Ssensor2.push(img2);
-    updateSsensorAccumulate(sSensor2Accumulate, img2.pos[0], img2.pos[1], angle2);
-  }
+  const s2 = updateSlot(Ssensor2, angle2, distance);
+  if (s2) updateSsensorAccumulate(sSensor2Accumulate, s2.targetPos[0], s2.targetPos[1], angle2, distance);
 }
 
 // ===== 누적 데이터 로드/저장 (전시용 영구 보존) =====
@@ -159,16 +155,25 @@ export function updateVsensorAccumulate(acc: Vaccumulate[], x: number, y: number
   }
 }
 
-export function updateSsensorAccumulate(acc: Saccumulate[], x: number, y: number, angle: number) {
-  const an = Math.round(angle / ANGLE_STEP) * ANGLE_STEP;
-  const found = acc.find((a) => a.angle === an);
+const BAND_CM = 100; // 거리 band 크기 (1m 단위: 0~1m, 1~2m, …)
+
+export function updateSsensorAccumulate(acc: Saccumulate[], x: number, y: number, angle: number, distance: number) {
+  const an = Math.round(angle / SLOT_DEG) * SLOT_DEG;
+  const band = Math.floor(distance / BAND_CM); // 거리 band
+  // (각도 + band)별로 빈도 — 같은 각도라도 거리대가 다르면 별개
+  const found = acc.find((a) => a.angle === an && a.band === band);
   if (found) {
+    found.pos[0] = (found.pos[0] * found.freq + x) / (found.freq + 1); // 평균 위치
+    found.pos[1] = (found.pos[1] * found.freq + y) / (found.freq + 1);
     found.freq++;
   } else {
     if (acc.length >= MAX_ACCUM) acc.shift();
-    acc.push({ pos: [x, y], angle: an, freq: 1 });
+    acc.push({ pos: [x, y], angle: an, band, freq: 1 });
   }
 }
+
+const TEST_MODE = true; // true면 센서 없이 랜덤값으로 시뮬레이션 (전시 땐 false)
+const RANDOM_TEST_MS = 2000; // 테스트 랜덤값 주기(ms)
 
 //이미지,tentacle 수명 업데이트(모든업데이트 여기서 함)
 let tickStarted = false;
@@ -177,34 +182,53 @@ function startSensorTick() {
   if (typeof window === "undefined") return;
   tickStarted = true;
 
-  //initParticles();
+  createBoids(); // 중심 베이스 boid 준비
+
+  // 오디오는 첫 유저 제스처 후에만 시작 가능 (브라우저 정책)
+  const startAudio = () => initBoidSound();
+  window.addEventListener("pointerdown", startAudio, { once: true });
+  window.addEventListener("keydown", startAudio, { once: true });
+
+  // 터치 테스트: 키보드 "1" 누르면 touch:2 신호처럼 (누르고 있으면 키 리피트로 지속)
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "1") onTouch(2);
+  });
+
+  // 테스트: n초마다 vSensor·sSensor에 랜덤값 (TEST_MODE일 때만)
+  if (TEST_MODE) {
+    setInterval(() => {
+      const v = vSensor[Math.floor(Math.random() * vSensor.length)];
+      if (v) {
+        // 작은 값이 더 자주(제곱), 가끔만 큰 값 — 30~330 범위
+        applyStrength(v, 30 + Math.pow(Math.random(), 2) * 500);
+        updateVsensorAccumulate(vSensorAccumulate, v.checkerGrid.pos[0], v.checkerGrid.pos[1]);
+      }
+      randomizeSSensor();
+    }, RANDOM_TEST_MS);
+  }
 
   function loop() {
     // ① accumulate 통합 위치 먼저 갱신
     updateAccumulate();
 
-    // ② 촉수 업데이트 (최신 accumulate 사용)
-    updateTtentacle(vSensorAccumulate, accumulate, vSensor, fg);
+    // ② vSensor 이미지 stage 수명 감소
+    updateVsensor(vSensor);
 
-    const newOcc = tenOccupied(fg, vSensor);
-    tOccupied.length = 0;
-    tOccupied.push(...newOcc);
+    // 고정 슬롯의 발(촉수): 탐색 → 다른 sonar 찾으면 고정
+    updateSSensor(Ssensor1);
+    updateSSensor(Ssensor2);
 
-    //t 확인하고 0 되면 발 떼고 정착 배열로 이전 (발 딛기는 이동량 기반으로 내부 처리)
-    updateSSensorImage(sSensor1Accumulate, Ssensor1, fg, TIME);
-    updateSSensorImage(sSensor2Accumulate, Ssensor2, fg, TIME);
+    // boid: 중심 풀 → 활성 vSensor 연결 → 색 boid → 다른 vSensor 연결 (fine 그리드)
+    updateBoids(vSensor, fineFg);
+
+    // boid 위치(중심거리) → 드론 사운드
+    updateBoidSound();
+
+    // 촘촘한 격자점 산발 흰 십자 (+가끔 vSensor 연결)
+    updateGridSparks(fineFg, vSensor);
 
     // 모든 vSensor 처리 후 1번만 — 다음 프레임 비교 기준 갱신
     syncAccumulateLastFreq(vSensorAccumulate);
-
-    // ③ 배경 파티클 — accum(끌림) + tOccupied(밀림)
-    //    sSensor accum은 center-origin이라 +CANVAS/2로 top-left 변환
-    const attractors = [
-      ...vSensorAccumulate.map((a) => ({ pos: a.pos, freq: a.freq })),
-      ...sSensor1Accumulate.map((a) => ({ pos: [a.pos[0] + CANVAS / 2, a.pos[1] + CANVAS / 2] as [number, number], freq: a.freq })),
-      ...sSensor2Accumulate.map((a) => ({ pos: [a.pos[0] + CANVAS / 2, a.pos[1] + CANVAS / 2] as [number, number], freq: a.freq })),
-    ];
-    //updateParticles(attractors, tOccupied);
 
     requestAnimationFrame(loop);
   }

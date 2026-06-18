@@ -1,18 +1,20 @@
 import P5SketchLoader from "./components/P5SketchLoader";
 import PrintDownloader from "./components/PrintDownloader";
-import PrintComposite from "./components/PrintComposite";
 import "./globals.css";
 
 export default function Home() {
   return (
     <div className="flex flex-row flex-1 items-center justify-center font-sans py-16 gap-8">
-      {/* 메인 무대 — 1200×1200에 모든 레이어 겹침 (조작용) */}
+      <div>
+        <img src="/logo.png" alt=""></img>
+      </div>
+
       <div style={mainStageStyle(1200)}>
-        <div style={overlayLayerStyle(1, 1200, true)}>
-          <P5SketchLoader sketchName="main" />
-        </div>
-        <div style={overlayLayerStyle(2, 1200)}>
+        <div style={overlayLayerStyle(1, 1200)}>
           <P5SketchLoader sketchName="sonar" />
+        </div>
+        <div style={overlayLayerStyle(2, 1200, true)}>
+          <P5SketchLoader sketchName="main" />
         </div>
         <div style={overlayLayerStyle(3, 1200)}>
           <P5SketchLoader sketchName="unit" />
@@ -22,33 +24,24 @@ export default function Home() {
         <P5SketchLoader sketchName="history" />
       </div>
 
-      {/* 캡처용 print 캔버스 — 화면 밖에 숨김 (Enter 시 이걸 저장) */}
-      <div className="print-source" style={offscreenStyle}>
-        <P5SketchLoader sketchName="print" />
+      {/* print = accumulate에서 최근/빈도순 뽑아 그리는 캔버스 (Enter/버튼 시 출력) */}
+      <div className="borderWhite print-source" style={printPreviewStyle(600)}>
+        <div style={miniScale(0.5)}>
+          <P5SketchLoader sketchName="print" />
+        </div>
       </div>
       <PrintDownloader />
-
-      {/* 합성: 오래된 trail(파랑) + 현재 trail(검정) 겹침 — Enter 시 이게 프린트됨 */}
-      <div className="borderWhite" style={printPreviewStyle(600)}>
-        <PrintComposite display={600} />
-      </div>
     </div>
   );
 }
 
-// 캡처용 — 화면 밖에 두되 렌더는 됨
-const offscreenStyle: React.CSSProperties = {
-  position: "absolute",
-  left: -99999,
-  top: 0,
-  width: 1200,
-  height: 1200,
-  pointerEvents: "none",
-};
-
 // 출력 미리보기 — 흰 배경 + 1200 캔버스를 박스 안으로 잘라넣음
+// 화면 밖으로 치워서 숨김(캔버스는 살아있어야 출력됨)
 function printPreviewStyle(size: number): React.CSSProperties {
   return {
+    position: "absolute",
+    left: -99999, // 화면 왼쪽 밖으로 (캔버스는 계속 렌더 → 출력 정상)
+    top: 0,
     width: size,
     height: size,
     overflow: "hidden",

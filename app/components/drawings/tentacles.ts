@@ -1,11 +1,44 @@
 import p5 from "p5";
-import { Tentacle, VSensor, CheckerGrid, Vaccumulate, Ssensor, Accumulate, ImgSet } from "../Util/types";
+import { Tentacle, VSensor, CheckerGrid, Vaccumulate } from "../Util/types";
 import { snapToCheck } from "./checkerboard";
-import { STEP_OFFSETS, GRID, TIME, CANVAS } from "../Util/constant";
 import { computePos4Shader } from "../Util/shaderUtil";
 import { drawCross } from "./draw";
-import { updateConnection } from "../sensors/vSensor";
-import { reportVten, reportSten } from "../forPrint";
+import { vSensorUnits } from "../Util/imageStore";
+
+const UNIT_SIZE = 50; // 촉수 뼈에 그리는 vUnit 이미지 크기
+
+// ===== 공통 촉수 탐색 알고리즘 =====
+// candidate는 호출자가 자기 좌표계로 만들어 넘김 (vTentacle=top-left, sTentacle=center)
+// 타이머(t.t) 동안 interval마다 하나 짚고, isSensor 짚으면 고정, 시간 끝나면 소멸
+export type TenCandidate = { pos: [number, number]; isSensor: boolean; isSonar?: boolean };
+
+export function searchTentacle(
+  t: Tentacle,
+  interval: number,
+  buildCandidates: () => TenCandidate[],
+  report?: (pos: [number, number]) => void
+) {
+  if (t.locked) return; // 이미 센서 찾음 → target 고정
+  t.t -= 1;
+  if (t.t <= 0) {
+    t.target = null; // 탐색 시간 끝 → 소멸
+    return;
+  }
+  t.switchT -= 1;
+  if (t.switchT > 0) return; // 다음 간격 아직
+  t.switchT = interval;
+
+  const cands = buildCandidates();
+  if (cands.length === 0) return;
+
+  const pick = cands[Math.floor(Math.random() * cands.length)];
+  t.target = pick.pos;
+  report?.(pick.pos);
+  if (pick.isSensor) {
+    t.locked = true; // 센서 찾으면 고정
+    t.lockedSonar = !!pick.isSonar; // 다른 sonar면 표시
+  }
+}
 
 export function FABRIK(p: p5, t: Tentacle): [number, number][] {
   if (t.target == null) return [];
@@ -54,107 +87,6 @@ export function FABRIK(p: p5, t: Tentacle): [number, number][] {
   return newParts;
 }
 
-export function updateTtentacle(Vacc: Vaccumulate[], acc: Accumulate[], vSensor: VSensor[], fg: CheckerGrid[]) {
-  for (const v of vSensor) {
-    const t = v.tentacle;
-    const [vx, vy] = v.checkerGrid.pos;
-    const a = Vacc.find((acc) => acc.pos[0] === vx && acc.pos[1] === vy);
-
-    if (a && a.freq > 0) {
-      const isNewStim = a.freq !== (a.lastFreq ?? 0);
-      const switchReady = t.switchT <= 0;
-
-      const canUpdate = (isNewStim || switchReady) && !(!isNewStim && t.t <= 0);
-
-      if (canUpdate) {
-        const candidates = makePosCandidate(acc, t);
-        if (candidates.length === 0) continue;
-
-        const ratio = Math.min(a.freq / 50, 1);
-        const other = getCandidate(candidates);
-        const [x, y] = getRandomTarget(a, ratio);
-        t.target = [other[0] + x * GRID, other[1] + y * GRID];
-        reportVten(t.target[0], t.target[1]); // vSensor 촉수 궤적 기록 (상한 15개)
-
-        // 새 자극일 때만 수명 + 전환 간격(고정) 계산
-        if (isNewStim) {
-          t.t = a.freq > 100 ? a.freq * 100 : a.freq * 10;
-          const switchCount = Math.max(1, Math.round(20 * (1 - ratio)));
-          t.switchInterval = t.t / switchCount;
-        }
-        t.switchT = t.switchInterval;
-
-        // target 정한 직후 connection 생성 (최대 3개)
-        updateConnection(v, fg);
-      }
-    }
-
-    // 수명/전환 타이머는 모든 vSensor에서 매 프레임 감소
-    t.t -= TIME;
-    t.switchT -= TIME;
-    if (t.t <= 0) t.target = null;
-  }
-}
-
-function makePosCandidate(acc: Accumulate[], tentacle: Tentacle): Accumulate[] {
-  const candidates: Accumulate[] = [];
-  for (const a of acc) {
-    const [vx, vy] = a.pos;
-    const [tx, ty] = tentacle.startPos;
-    const dx = tx - vx;
-    const dy = ty - vy;
-    const d = Math.sqrt(dx * dx + dy * dy);
-    if (d <= tentacle.defaultLength * 4) candidates.push(a);
-  }
-  return candidates;
-}
-
-function getCandidate(candidates: Accumulate[]): [number, number] {
-  for (const c of candidates) {
-    if (1 - 1 / c.freq + Math.random() > 0.6) {
-      const index = Math.floor(Math.random() * candidates.length);
-      return [candidates[index].pos[0], candidates[index].pos[1]];
-    }
-  }
-  return [0, 0];
-}
-
-function getRandomTarget(a: Vaccumulate, ratio: number): [number, number] {
-  const maxStage = STEP_OFFSETS.length - 1;
-  const stage = Math.round(maxStage * (1 - ratio));
-
-  const randPoss = STEP_OFFSETS[stage];
-  return randPoss[Math.floor(Math.random() * randPoss.length)];
-}
-
-export function syncAccumulateLastFreq(vSensorAccumulate: Vaccumulate[]) {
-  for (const a of vSensorAccumulate) {
-    a.lastFreq = a.freq;
-  }
-}
-
-// sSensor 한 개의 발들이 새 위치를 딛음 (sSensor가 일정 거리 이상 움직였을 때 호출)
-export function stepStentacle(s: Ssensor, fg: CheckerGrid[]) {
-  for (const t of s.tentacles) {
-    // 근처 fg 후보 — sSensor는 center-origin이라 fg(top-left)를 center로 변환해 비교
-    const [tx, ty] = t.startPos;
-    const candidates: CheckerGrid[] = [];
-    for (const g of fg) {
-      const gx = g.pos[0] - CANVAS / 2;
-      const gy = g.pos[1] - CANVAS / 2;
-      const d = Math.hypot(tx - gx, ty - gy);
-      if (d <= t.defaultLength) candidates.push(g);
-    }
-    if (candidates.length === 0) continue; // 없으면 스킵
-
-    // 랜덤 하나 디디기 — target은 center-origin (sonar는 translate로 그림)
-    const r = Math.floor(Math.random() * candidates.length);
-    const g = candidates[r];
-    t.target = [g.pos[0] - CANVAS / 2, g.pos[1] - CANVAS / 2];
-    reportSten(g.pos[0], g.pos[1]); // 궤적은 top-left로 기록 (print용)
-  }
-}
-
 export function sTentacleAlert(pos: [number, number], tentacles: Tentacle[]) {
   for (const t of tentacles) t.startPos = [pos[0], pos[1]];
 }
@@ -173,17 +105,13 @@ export function drawFABRIK(p: p5, t: Tentacle, acc?: Vaccumulate, useShaderPos =
   const freq = acc?.lastFreq ?? acc?.freq ?? 0;
   const prob = Math.min(freq / 50, 1);
 
-  let lineWeight = 3;
-  let currentColor = [255, 255, 255];
-  if (acc) {
-    lineWeight = 7;
-    currentColor = [
-      lineColor[0] + (brightColor[0] - lineColor[0]) * prob,
-      lineColor[1] + (brightColor[1] - lineColor[1]) * prob,
-      lineColor[2] + (brightColor[2] - lineColor[2]) * prob,
-      0,
-    ];
-  }
+  const lineWeight = acc ? 7 : 3;
+  // 항상 freq 그라데이션 색 (prob=0이면 lineColor)
+  const currentColor = [
+    lineColor[0] + (brightColor[0] - lineColor[0]) * prob,
+    lineColor[1] + (brightColor[1] - lineColor[1]) * prob,
+    lineColor[2] + (brightColor[2] - lineColor[2]) * prob,
+  ];
   p.stroke(currentColor);
 
   p.strokeWeight(lineWeight);
@@ -194,31 +122,24 @@ export function drawFABRIK(p: p5, t: Tentacle, acc?: Vaccumulate, useShaderPos =
     p.line(x1, y1, x2, y2);
   }
 
+  // vSensor 촉수(useShaderPos)면 뼈마다 vUnit 이미지, 아니면 십자
+  const unitImg = useShaderPos && vSensorUnits.length > 0 ? vSensorUnits[Math.floor((t.phase / (Math.PI * 2)) * vSensorUnits.length) % vSensorUnits.length] : null;
+
   p.fill(currentColor);
   for (const b of t.parts) {
     const [x, y] = conv(b);
-    p.strokeWeight(2);
-    p.stroke(
-      lineColor[0] + (brightColor[0] - lineColor[0]) * prob,
-      lineColor[1] + (brightColor[1] - lineColor[1]) * prob,
-      lineColor[2] + (brightColor[2] - lineColor[2]) * prob
-    );
-    if (useShaderPos) drawCross(p, x, y);
-  }
-}
-
-export function tenOccupied(fg: CheckerGrid[], vSensor: VSensor[]): [number, number][] {
-  const occupied: [number, number][] = [];
-  for (const v of vSensor) {
-    const t = v.tentacle;
-    if (t.target == null) continue; // target 없으면 tapestry에 안 그림
-    occupied.push(snapToCheck(t.startPos, fg));
-    for (const part of t.parts) {
-      occupied.push(snapToCheck(part, fg));
+    if (unitImg) {
+      p.image(unitImg, x - UNIT_SIZE / 2, y - UNIT_SIZE / 2, UNIT_SIZE, UNIT_SIZE);
+    } else if (useShaderPos) {
+      p.strokeWeight(2);
+      p.stroke(
+        lineColor[0] + (brightColor[0] - lineColor[0]) * prob,
+        lineColor[1] + (brightColor[1] - lineColor[1]) * prob,
+        lineColor[2] + (brightColor[2] - lineColor[2]) * prob
+      );
+      drawCross(p, x, y);
     }
-    occupied.push(snapToCheck(t.target, fg));
   }
-  return occupied;
 }
 
 export function makeTentacle(startPos: [number, number], length: number, partCount: number, curvedBias: number): Tentacle {
@@ -240,6 +161,8 @@ export function makeTentacle(startPos: [number, number], length: number, partCou
     speed: Math.random() * 0.04 + 0.02,
     phase: Math.random() * Math.PI * 2,
     curveBias: (Math.random() - 0.5) * curvedBias,
+    locked: false,
+    lockedSonar: false,
   };
 }
 

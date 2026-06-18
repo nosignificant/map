@@ -49,8 +49,8 @@ export const STEP_OFFSETS: [number, number][][] = [
 ];
 //time
 export const INITtime = 60;
-export const TIME = 0.1;
+export const TIME = 1.0;
 
-export const TRAIL_SPEED = 0.5;
+export const TRAIL_SPEED = 1.0;
 
 export const IMAGE_HISTORY_MAX = 10;

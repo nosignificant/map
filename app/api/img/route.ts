@@ -17,7 +17,8 @@ function getImagesRecursive(dir: string, base: string): string[] {
 }
 
 const DIRS: Record<string, string> = {
-  vSensor: "units-3pt-yl",
+  vSensor: "units-1pt-bk",
+  vSensor2: "units-3pt-yl",
   sSensor: "sSensor",
 };
 

@@ -1,34 +1,6 @@
 import { CANVAS } from "./constant";
-export async function shaderCobine(): Promise<{ vertSrc: string; fragCombined: string }> {
-  const vertSrc = await fetch("/shaders/sketch.vert").then((r) => r.text());
-  const [fragSrc, sdfSrc, connectionsSrc, tapestrySrc] = await Promise.all([
-    fetch("/shaders/sketch.frag").then((r) => r.text()),
-    fetch("/shaders/sdf.glsl").then((r) => r.text()),
-    fetch("/shaders/connections.glsl").then((r) => r.text()),
-    fetch("/shaders/tapestry.glsl").then((r) => r.text()),
-  ]);
-  const fragCombined = fragSrc
-    .replace("// #include sdf.glsl", sdfSrc)
-    .replace("// #include connections.glsl", connectionsSrc)
-    .replace("// #include tapestry.glsl", tapestrySrc);
 
-  return { vertSrc, fragCombined };
-}
-
-export async function tapestryShaderCombine(): Promise<{ vertSrc: string; fragCombined: string }> {
-  const vertSrc = await fetch("/shaders/sketch.vert").then((r) => r.text());
-  const [fragSrc, sdfSrc, tapestrySrc] = await Promise.all([
-    fetch("/shaders/tapestry.frag").then((r) => r.text()),
-    fetch("/shaders/sdf.glsl").then((r) => r.text()),
-    fetch("/shaders/tapestry.glsl").then((r) => r.text()),
-  ]);
-  const fragCombined = fragSrc
-    .replace("// #include sdf.glsl", sdfSrc)
-    .replace("// #include tapestry.glsl", tapestrySrc);
-
-  return { vertSrc, fragCombined };
-}
-
+// WEBGL 중앙 원점 변환 (top-left → center-origin). 셰이더와 무관한 좌표 헬퍼.
 export function computePos4Shader(pos: [number, number]): [number, number] {
   return [pos[0] - CANVAS / 2, pos[1] - CANVAS / 2];
 }

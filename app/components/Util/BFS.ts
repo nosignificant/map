@@ -1,7 +1,7 @@
 import { CheckerGrid } from "./types";
 import { GRID } from "./constant";
 
-export function findPath(src: CheckerGrid[], from: [number, number], to: [number, number]): [number, number][] {
+export function findPath(src: CheckerGrid[], from: [number, number], to: [number, number], step: number = GRID): [number, number][] {
   const paths: [number, number][] = [];
   const key = (x: number, y: number) => `${x},${y}`;
 
@@ -38,8 +38,8 @@ export function findPath(src: CheckerGrid[], from: [number, number], to: [number
     ];
     for (const [dr, dc] of dirs) {
       //이웃 점을 큐에 추가
-      const nx = pos[0] + dc * GRID;
-      const ny = pos[1] + dr * GRID;
+      const nx = pos[0] + dc * step;
+      const ny = pos[1] + dr * step;
       const nk = key(nx, ny);
       if (posMap.has(nk) && !visited.has(nk)) {
         queue.push({ pos: [nx, ny], path: [...path, [nx, ny]] });

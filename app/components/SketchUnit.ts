@@ -13,12 +13,10 @@ export function SketchUnit(container: HTMLElement) {
     p.draw = () => {
       p.clear();
 
-      // v 센서 이미지 그리기 (stage 변화 감지 + history 추가는 updateVsensorImage 내부에서 자동)
+      // vSensor 단계 이미지 (units-3pt-yl) — 현재 stage까지 누적
       const nearImgs = updateVsensorImage(vSensor);
-
       for (const n of nearImgs) {
-        for (const pos of n.pos) {
-          const [x, y] = pos;
+        for (const [x, y] of n.pos) {
           p.image(n.image, x - GRID / 2, y - GRID / 2, GRID, GRID);
         }
       }

@@ -26,11 +26,10 @@ export function drawOffsetOccupied(p: p5, src: boolean[][]) {
     }
   }
 }
-export function drawCross(p: p5, x: number, y: number) {
-  const startX = x - GRID / 4;
-  const startY = y - GRID / 4;
-  p.line(startX, y, startX + GRID / 2, y);
-  p.line(x, startY, x, startY + GRID / 2);
+export function drawCross(p: p5, x: number, y: number, len: number = GRID / 2) {
+  const h = len / 2;
+  p.line(x - h, y, x + h, y);
+  p.line(x, y - h, x, y + h);
 }
 
 // × 표 (45도 돌린 십자) — connection 전용
